@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexaPortal Enterprise | 넥사세미(NexaSemi) FAB-M16 사내 인트라넷</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Pretendard & JetBrains Mono Fonts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap" />
+  <script>
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Pretendard', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+              mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace']
+            },
+            colors: {
+              corp: {
+                950: '#060c1a',
+                900: '#0b132b',
+                850: '#111c3a',
+                800: '#1c2541',
+                700: '#2b395e'
+              }
+            }
+          }
+        }
+      };
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    /* 스크롤바 스타일 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* 반도체 웨이퍼 그리드 배경 (SSO 로그인 화면) */
+    .wafer-grid-bg {
+      background-color: #060c1a;
+      background-image:
+        radial-gradient(circle at 22% 35%, rgba(37, 99, 235, 0.22) 0%, transparent 45%),
+        radial-gradient(circle at 80% 75%, rgba(14, 165, 233, 0.14) 0%, transparent 40%),
+        linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    /* 로그인 오류 Shake 애니메이션 */
+    @keyframes shakeX {
+      0%, 100% { transform: translateX(0); }
+      18% { transform: translateX(-8px); }
+      36% { transform: translateX(7px); }
+      54% { transform: translateX(-5px); }
+      72% { transform: translateX(4px); }
+      88% { transform: translateX(-2px); }
+    }
+    .animate-shake {
+      animation: shakeX 0.42s ease-in-out;
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up {
+      animation: fadeSlideUp 0.28s ease-out forwards;
+    }
+
+    @keyframes stampPop {
+      0% { transform: scale(2.1) rotate(-18deg); opacity: 0; }
+      70% { transform: scale(0.95) rotate(-7deg); opacity: 1; }
+      100% { transform: scale(1) rotate(-7deg); opacity: 1; }
+    }
+    .stamp-animate {
+      animation: stampPop 0.36s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* 슬라이더 커스텀 */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #1d4ed8;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+      cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+    }
+
+    .nav-item-active {
+      background: linear-gradient(90deg, rgba(37, 99, 235, 0.28) 0%, rgba(37, 99, 235, 0.06) 100%);
+      border-left: 3px solid #3b82f6;
+      color: #ffffff !important;
+    }
+
+    .chart-box {
+      position: relative;
+      width: 100%;
+      height: 270px;
+    }
+    .chart-box-sm {
+      position: relative;
+      width: 100%;
+      height: 230px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- =========================================================================
+       SECTION A: CORPORATE SSO LOGIN GATE SCREEN (FIRST VIEW BEFORE PORTAL)
+  ========================================================================= -->
+  <div id="ssoLoginGate" class="fixed inset-0 z-50 wafer-grid-bg overflow-y-auto flex items-center justify-center p-4 sm:p-6">
+    <!-- 배경 장식 웨이퍼 원형 링 -->
+    <div class="pointer-events-none fixed -left-24 -bottom-24 w-[480px] h-[480px] rounded-full border border-blue-500/15 opacity-50"></div>
+    <div class="pointer-events-none fixed -left-12 -bottom-12 w-[360px] h-[360px] rounded-full border border-sky-400/10 opacity-50"></div>
+
+    <div class="relative w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl border border-slate-700/70 bg-corp-900/90 backdrop-blur-xl grid grid-cols-1 lg:grid-cols-12">
+
+      <!-- 좌측 브랜딩 & 보안 상태 패널 -->
+      <div class="lg:col-span-6 p-7 sm:p-10 flex flex-col justify-between bg-gradient-to-br from-corp-900 via-corp-850 to-corp-950 border-b lg:border-b-0 lg:border-r border-slate-800">
+        <div>
+          <!-- 브랜드 로고 -->
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg border border-blue-400/40">
+              <i class="fa-solid fa-microchip text-white text-xl"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xl font-extrabold tracking-tight text-white">NexaSemi</span>
+                <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/30">NexaSSO</span>
+              </div>
+              <p class="text-xs text-slate-400">넥사세미 사내 보안망 통합 인증 게이트웨이</p>
+            </div>
+          </div>
+
+          <!-- 타이틀 및 설명 -->
+          <div class="mt-9">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-[11px] font-semibold text-sky-300 mb-4">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              FAB-M16 Smart Manufacturing Portal
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white leading-tight tracking-tight">
+              차세대 1c 16Gb DDR5<br />
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">지능형 공정 통합 인트라넷</span>
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-300 mt-3.5 leading-relaxed">
+              본 시스템은 넥사세미 임직원 전용 보안 포털입니다. 사내 메일(NexaMail), FDC/CP 실시간 공정 계측, NexaAI 트러블슈팅 에이전트 및 ECR 전자결재에 통합 SSO 세션으로 접속합니다.
+            </p>
+          </div>
+
+          <!-- 보안 배지 3종 -->
+          <div class="mt-6 flex flex-wrap gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-[11px] font-semibold text-slate-200">
+              <i class="fa-solid fa-shield-halved text-blue-400"></i>ISO 27001
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-[11px] font-semibold text-slate-200">
+              <i class="fa-solid fa-lock text-amber-400"></i>사내망 전용
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-[11px] font-semibold text-slate-200">
+              <i class="fa-solid fa-layer-group text-cyan-400"></i>1c DDR5 양산 라인
+            </span>
+          </div>
+        </div>
+
+        <!-- 하단 실시간 시스템 상태 박스 -->
+        <div class="mt-8 pt-5 border-t border-slate-800/90 space-y-2.5">
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500">FAB-M16 INFRASTRUCTURE STATUS</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-900/80 border border-slate-800">
+              <span class="text-slate-300 flex items-center gap-2"><i class="fa-solid fa-server text-emerald-400"></i>MES/FDC 연동</span>
+              <span class="font-mono text-[11px] font-bold text-emerald-400">정상</span>
+            </div>
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-900/80 border border-slate-800">
+              <span class="text-slate-300 flex items-center gap-2"><i class="fa-solid fa-robot text-indigo-400"></i>NexaAI Engine v2.4</span>
+              <span class="font-mono text-[11px] font-bold text-emerald-400">Online</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500">
+            <i class="fa-solid fa-circle-info mr-1"></i>보안 접속 기록은 사내 정보보안 감사 로그에 자동 기록됩니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- 우측 SSO 로그인 폼 카드 -->
+      <div class="lg:col-span-6 p-7 sm:p-10 bg-white text-slate-900 flex flex-col justify-center">
+        <div id="loginCardInner" class="max-w-md w-full mx-auto">
+          <div class="mb-6">
+            <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-blue-700">SINGLE SIGN-ON AUTHENTICATION</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">NexaSSO 사내 통합 로그인</h2>
+            <p class="text-xs text-slate-500 mt-1">할당받은 임직원 사번 또는 사내 이메일 계정으로 인증하세요.</p>
+          </div>
+
+          <!-- 로그인 에러 배너 -->
+          <div id="loginErrorBox" class="hidden mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs leading-relaxed flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-exclamation text-red-600 mt-0.5 shrink-0"></i>
+            <span id="loginErrorMsg">사번 또는 비밀번호가 일치하지 않습니다. 사내 보안팀(내선 1600)에 문의하거나 아래 테스트 계정을 확인하세요.</span>
+          </div>
+
+          <!-- 로그인 폼 -->
+          <form id="ssoLoginForm" class="space-y-4" novalidate>
+            <div>
+              <label for="ssoUserId" class="block text-xs font-bold text-slate-700 mb-1.5">사번 또는 사내 이메일</label>
+              <div class="relative">
+                <i class="fa-regular fa-id-badge absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input
+                  id="ssoUserId"
+                  type="text"
+                  autocomplete="username"
+                  placeholder="예: NX260715 또는 cr.lee@nexasemi.com"
+                  class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label for="ssoPassword" class="block text-xs font-bold text-slate-700 mb-1.5">비밀번호</label>
+              <div class="relative">
+                <i class="fa-solid fa-key absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input
+                  id="ssoPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="사내 보안 비밀번호 입력"
+                  class="w-full pl-10 pr-11 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                />
+                <button
+                  type="button"
+                  id="togglePwdBtn"
+                  onclick="togglePasswordVisibility()"
+                  aria-label="비밀번호 표시 전환"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1"
+                >
+                  <i id="togglePwdIcon" class="fa-regular fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs pt-0.5">
+              <label class="inline-flex items-center gap-2 text-slate-600 cursor-pointer select-none">
+                <input id="ssoRemember" type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                <span>로그인 상태 유지 (사내 단말기)</span>
+              </label>
+              <span class="text-slate-400 font-mono text-[11px]">SSL/TLS 1.3</span>
+            </div>
+
+            <button
+              type="submit"
+              id="ssoSubmitBtn"
+              class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-sm font-bold shadow-lg shadow-blue-700/20 transition flex items-center justify-center gap-2"
+            >
+              <i class="fa-solid fa-right-to-bracket"></i>
+              <span>사내 포털 로그인</span>
+            </button>
+          </form>
+
+          <!-- 평가자 / 시연용 테스트 계정 안내 & 원클릭 자동 입력 -->
+          <div class="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-user-check text-blue-600"></i>평가자 / 시연용 테스트 계정
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">Demo Access</span>
+            </div>
+            <div class="text-xs text-slate-600 bg-white rounded-lg p-2.5 border border-slate-200/80 space-y-1">
+              <div class="flex flex-wrap items-center justify-between gap-1">
+                <span class="text-slate-500">사번 / 이메일:</span>
+                <span class="font-mono font-bold text-slate-900">NX260715 <span class="text-slate-400 font-normal">(cr.lee@nexasemi.com)</span></span>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-1">
+                <span class="text-slate-500">비밀번호:</span>
+                <span class="font-mono font-bold text-blue-700">NexaFab16!</span>
+              </div>
+              <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                접속 프로필: <strong>공정기술팀 신입 이채련 사원</strong> (Etch 파트 · FAB-M16)
+              </div>
+            </div>
+            <button
+              type="button"
+              onclick="quickFillDemoAccount()"
+              class="w-full py-2 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5"
+            >
+              <i class="fa-solid fa-bolt text-amber-400"></i>
+              <span>테스트 계정 자동 입력</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SSO 인증 전환 오버레이 -->
+  <div id="ssoLoadingOverlay" class="hidden fixed inset-0 z-[60] bg-corp-950/95 backdrop-blur-md flex flex-col items-center justify-center text-white p-6">
+    <div class="w-16 h-16 rounded-2xl bg-blue-600/20 border border-blue-400/40 flex items-center justify-center mb-5 shadow-xl">
+      <i class="fa-solid fa-shield-halved text-3xl text-blue-400 animate-pulse"></i>
+    </div>
+    <h3 class="text-lg font-bold tracking-tight">NexaSSO 인증 성공</h3>
+    <p id="ssoLoadingText" class="text-xs sm:text-sm text-slate-300 mt-1.5">보안 토큰 발급 및 FAB-M16 세션 연결 중...</p>
+    <div class="w-64 h-1.5 bg-slate-800 rounded-full overflow-hidden mt-5">
+      <div id="ssoProgressBar" class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 w-0 transition-all duration-700"></div>
+    </div>
+    <div class="mt-3 text-[11px] font-mono text-slate-400">SESSION_ID: NX-M16-20260715-ECR04</div>
+  </div>
+
+
+  <!-- =========================================================================
+       SECTION B: MAIN ENTERPRISE INTRANET PORTAL (SHOWN AFTER SSO LOGIN)
+  ========================================================================= -->
+  <div id="mainPortalApp" class="hidden min-h-screen flex flex-col">
+
+    <!-- 1. 상단 글로벌 헤더 -->
+    <header class="sticky top-0 z-40 bg-corp-900 text-white border-b border-slate-800 shadow-md">
+      <!-- 상단 메인 바 -->
+      <div class="h-14 px-3 sm:px-5 flex items-center justify-between gap-3">
+        <!-- 좌측 로고 & 모바일 토글 -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-800 text-slate-300" aria-label="사이드바 열기">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div onclick="switchTab('home')" class="flex items-center gap-2.5 cursor-pointer select-none">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center border border-blue-400/40">
+              <i class="fa-solid fa-microchip text-white text-sm"></i>
+            </div>
+            <div class="leading-tight">
+              <div class="flex items-center gap-1.5">
+                <span class="font-extrabold text-sm sm:text-base tracking-tight">NexaPortal</span>
+                <span class="hidden sm:inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/30">Enterprise</span>
+              </div>
+              <p class="text-[10px] text-slate-400 hidden md:block">넥사세미(NexaSemi) FAB-M16 통합 그룹웨어</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 중앙 라이브 라인 티커 -->
+        <div id="liveTickerBar" class="hidden xl:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-500/15 border border-red-500/40 text-xs font-mono">
+          <span id="liveTickerDot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <span id="liveTickerText" class="text-red-200 font-semibold">LINE: FAB-M16 | PRODUCT: 1c 16Gb DDR5 (BCAT) | LOT STATUS: HOLD 3 LOTS</span>
+        </div>
+
+        <!-- 우측 알림, 프로필, 로그아웃 -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- 알림 드롭다운 버튼 -->
+          <div class="relative">
+            <button id="notifBellBtn" onclick="toggleNotifDrawer()" class="relative p-2 rounded-lg hover:bg-slate-800 text-slate-300 transition" aria-label="알림">
+              <i class="fa-regular fa-bell text-base"></i>
+              <span id="notifCountBadge" class="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">4</span>
+            </button>
+            <div id="notifDrawer" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white text-slate-800 rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50">
+              <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-bell text-blue-600 mr-1.5"></i>실시간 사내 알림 센터</span>
+                <button onclick="markAllNotificationsRead()" class="text-[11px] text-blue-600 hover:underline font-medium">모두 읽음</button>
+              </div>
+              <div id="notifListContainer" class="max-h-80 overflow-y-auto divide-y divide-slate-100 text-xs"></div>
+            </div>
+          </div>
+
+          <!-- 임직원 프로필 -->
+          <div class="flex items-center gap-2 pl-2 border-l border-slate-700">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-xs font-bold text-white border border-blue-300/40 shrink-0">
+              이채련
+            </div>
+            <div class="hidden sm:block leading-tight">
+              <div class="text-xs font-bold text-white">이채련 사원 <span class="text-[10px] font-mono text-slate-400">(NX260715)</span></div>
+              <div class="text-[10px] text-slate-300">공정기술팀 Etch 파트</div>
+            </div>
+          </div>
+
+          <!-- 로그아웃 버튼 -->
+          <button
+            onclick="logoutFromPortal()"
+            class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-600/90 text-slate-200 hover:text-white border border-slate-700 hover:border-red-500 text-xs font-semibold transition flex items-center gap-1.5"
+            title="SSO 세션 종료 및 로그아웃"
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span class="hidden sm:inline">로그아웃</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 평가자용 5단계 빠른 시나리오 가이드 바 -->
+      <div class="bg-corp-950 border-t border-slate-800/80 px-3 sm:px-5 py-2 overflow-x-auto">
+        <div class="flex items-center gap-2 min-w-max text-[11px]">
+          <span class="px-2 py-0.5 rounded bg-blue-600/25 text-blue-300 border border-blue-500/30 font-bold shrink-0">
+            <i class="fa-solid fa-compass mr-1"></i>평가자 시나리오 가이드
+          </span>
+          <button onclick="switchTab('mail')" data-guide="mail" class="guide-step-btn px-2.5 py-1 rounded-md bg-slate-800/70 hover:bg-blue-600/40 text-slate-200 transition">① 문제 메일 확인</button>
+          <i class="fa-solid fa-chevron-right text-slate-600 text-[9px]"></i>
+          <button onclick="switchTab('monitoring')" data-guide="monitoring" class="guide-step-btn px-2.5 py-1 rounded-md bg-slate-800/70 hover:bg-blue-600/40 text-slate-200 transition">② FDC/CP 데이터 &amp; 한계</button>
+          <i class="fa-solid fa-chevron-right text-slate-600 text-[9px]"></i>
+          <button onclick="switchTab('ai')" data-guide="ai" class="guide-step-btn px-2.5 py-1 rounded-md bg-slate-800/70 hover:bg-blue-600/40 text-slate-200 transition">③ NexaAI 원인 분석</button>
+          <i class="fa-solid fa-chevron-right text-slate-600 text-[9px]"></i>
+          <button onclick="switchTab('ecr')" data-guide="ecr" class="guide-step-btn px-2.5 py-1 rounded-md bg-slate-800/70 hover:bg-blue-600/40 text-slate-200 transition">④ 1차 반려/2차 승인 시연</button>
+          <i class="fa-solid fa-chevron-right text-slate-600 text-[9px]"></i>
+          <button onclick="switchTab('home')" data-guide="home" class="guide-step-btn px-2.5 py-1 rounded-md bg-slate-800/70 hover:bg-blue-600/40 text-slate-200 transition">⑤ 최종 성과 &amp; 조직 현황</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. 본문 컨테이너 (좌측 고정 사이드바 + 우측 메인 뷰) -->
+    <div class="flex flex-1 min-h-0 relative">
+      <!-- 모바일 오버레이 -->
+      <div id="mobileSidebarBackdrop" onclick="toggleMobileSidebar()" class="hidden fixed inset-0 bg-slate-950/60 z-30 lg:hidden"></div>
+
+      <!-- 좌측 사이드바 -->
+      <aside id="portalSidebar" class="fixed lg:static inset-y-0 left-0 z-30 w-64 bg-corp-900 text-slate-300 border-r border-slate-800 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-200 pt-24 lg:pt-0 shrink-0">
+        <!-- 담당 설비 / 티켓 요약 -->
+        <div class="p-4 border-b border-slate-800">
+          <div class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-2">ACTIVE WORKSPACE</div>
+          <div class="rounded-xl bg-corp-850 border border-slate-700/70 p-3 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-white">1c 16Gb DDR5</span>
+              <span id="sidebarLinePill" class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30">HOLD 3</span>
+            </div>
+            <div class="text-[11px] text-slate-400">공정: BCAT Recess Etch</div>
+            <div class="text-[11px] text-amber-300 font-mono">문서: ECR-2026-0715-04</div>
+          </div>
+        </div>
+
+        <!-- 6대 모듈 네비게이션 -->
+        <nav class="flex-1 p-2.5 space-y-1 overflow-y-auto">
+          <button data-tab="home" onclick="switchTab('home')" class="nav-btn nav-item-active w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-building-columns w-4 text-center"></i>포털 홈 · 기업/조직 현황</span>
+          </button>
+
+          <button data-tab="mail" onclick="switchTab('mail')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-envelope w-4 text-center"></i>사내 메일함 (NexaMail)</span>
+            <span id="sidebarMailBadge" class="px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">3</span>
+          </button>
+
+          <button data-tab="monitoring" onclick="switchTab('monitoring')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-chart-area w-4 text-center"></i>FDC · CP 모니터링</span>
+            <span id="sidebarFdcBadge" class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] font-mono font-bold">UCL!</span>
+          </button>
+
+          <button data-tab="ai" onclick="switchTab('ai')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-robot w-4 text-center text-indigo-400"></i>NexaAI 트러블슈팅</span>
+            <span class="px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 border border-indigo-400/30 text-[9px] font-mono font-bold">AGENT</span>
+          </button>
+
+          <button data-tab="ecr" onclick="switchTab('ecr')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-file-signature w-4 text-center"></i>레시피 DOE · 전자결재</span>
+            <span id="sidebarEcrBadge" class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">대기</span>
+          </button>
+
+          <button data-tab="wiki" onclick="switchTab('wiki')" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white transition">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-book-bookmark w-4 text-center"></i>사내 SOP · 기술위키</span>
+            <span class="text-[10px] font-mono text-slate-500">RAG</span>
+          </button>
+        </nav>
+
+        <!-- 하단 협업 담당자 퀵 디렉토리 -->
+        <div class="p-3.5 border-t border-slate-800 bg-corp-950/70">
+          <div class="text-[10px] font-mono text-slate-500 uppercase mb-2">TF 협업 선임 디렉토리 (6인)</div>
+          <div class="space-y-1.5 text-[11px]">
+            <div class="flex justify-between"><span class="text-slate-400">수율개선팀</span><span class="text-slate-200 font-semibold">정준재 선임</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">CP파트</span><span class="text-slate-200 font-semibold">박성한 선임</span></div>
+            <div class="flex justify-between"><span class="text-blue-400">공정기술팀(장)</span><span class="text-blue-300 font-bold">최지훈 책임</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">공정기술팀</span><span class="text-slate-200 font-semibold">조형우 선임</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">설비기술팀</span><span class="text-slate-200 font-semibold">조병현 선임</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">품질보증(QA)</span><span class="text-slate-200 font-semibold">최정 선임</span></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 우측 메인 워크스페이스 -->
+      <main class="flex-1 min-w-0 p-4 sm:p-6 overflow-y-auto">
+
+        <!-- =================================================================
+             TAB 1: 포털 홈 · 기업/조직 현황
+        ================================================================= -->
+        <section id="tab-home" class="tab-panel space-y-6 animate-fade-up">
+          <!-- 상단 타이틀 & 액션 -->
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[11px] font-bold">넥사세미(NexaSemi)</span>
+                <span class="text-xs text-slate-500 font-mono">FAB-M16 · 2026-07-15</span>
+              </div>
+              <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">FAB-M16 스마트 제조 통합 포털 홈</h1>
+              <p class="text-xs text-slate-500 mt-0.5">차세대 1c(6세대 10nm급) 16Gb DDR5 DRAM 양산 라인 현황 및 AI 공정 트러블슈팅 성과 대시보드</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="switchTab('mail')" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm transition">
+                <i class="fa-solid fa-envelope-open-text text-blue-600 mr-1.5"></i>긴급 메일함 (3)
+              </button>
+              <button onclick="switchTab('ai')" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-sm transition">
+                <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>NexaAI 자율 분석
+              </button>
+              <button onclick="switchTab('ecr')" class="px-3.5 py-2 rounded-xl bg-corp-900 hover:bg-slate-800 text-xs font-bold text-white shadow-sm transition">
+                <i class="fa-solid fa-file-signature mr-1.5"></i>ECR 결재 상신
+              </button>
+            </div>
+          </div>
+
+          <!-- 승인 완료 시 활성화되는 최종 성과 배너 -->
+          <div id="homeApprovedBanner" class="hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white p-5 shadow-lg border border-emerald-400/40 animate-fade-up">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="px-2.5 py-0.5 rounded-full bg-white/20 text-[11px] font-bold"><i class="fa-solid fa-circle-check mr-1"></i>ECR-2026-0715-04 최종 승인 완료</span>
+                  <span class="text-xs text-emerald-100">결재권자: 공정기술팀 최지훈 책임 ("알겠어, 승인하지.")</span>
+                </div>
+                <h2 class="text-lg font-extrabold">1c DDR5 BCAT Recess Etch Step-Down 최적화 및 설비 PM/Interlock 확정</h2>
+                <p class="text-xs text-emerald-50 mt-1">DOE-03 최적 레시피(Main 1000W / OE Step-Down 800W / 50mTorr / Bias 70W) 적용 및 ET-04-ChB 노후 Matcher 교체·VI Probe Interlock 병행으로 양산 수율 완전 회복</p>
+              </div>
+              <div class="grid grid-cols-3 gap-2.5 shrink-0">
+                <div class="bg-white/15 backdrop-blur rounded-xl px-3.5 py-2.5 text-center">
+                  <div class="text-[10px] text-emerald-100">측벽 과식각 저감</div>
+                  <div class="text-base font-mono font-extrabold">-82.2%</div>
+                  <div class="text-[10px] text-emerald-100">3.44→0.61 nm</div>
+                </div>
+                <div class="bg-white/15 backdrop-blur rounded-xl px-3.5 py-2.5 text-center">
+                  <div class="text-[10px] text-emerald-100">Retention 회복</div>
+                  <div class="text-base font-mono font-extrabold">139.4 ms</div>
+                  <div class="text-[10px] text-emerald-100">90.0→139.4 ms</div>
+                </div>
+                <div class="bg-white/15 backdrop-blur rounded-xl px-3.5 py-2.5 text-center">
+                  <div class="text-[10px] text-emerald-100">Trench CD</div>
+                  <div class="text-base font-mono font-extrabold">18.61 nm</div>
+                  <div class="text-[10px] text-emerald-100">Depth 120.44 nm</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 핵심 경영/공정 KPI 4개 (승인 시 동적 업데이트) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500">Data Retention Time (85°C)</span>
+                <span id="kpiIconRet" class="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center"><i class="fa-solid fa-stopwatch"></i></span>
+              </div>
+              <div class="mt-2.5 flex items-baseline gap-2">
+                <span id="kpiValRet" class="text-2xl font-mono font-extrabold text-red-600">90.0 ms</span>
+                <span id="kpiSubRet" class="text-xs font-semibold text-slate-400">정상 139.3 ms</span>
+              </div>
+              <p id="kpiDescRet" class="text-[11px] text-slate-500 mt-1.5">Fail Cell 388.6 ppm / Leakage 773.24 pA (303×)</p>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500">BCAT Lateral Over-Etch</span>
+                <span id="kpiIconLoe" class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-arrows-left-right"></i></span>
+              </div>
+              <div class="mt-2.5 flex items-baseline gap-2">
+                <span id="kpiValLoe" class="text-2xl font-mono font-extrabold text-red-600">+3.03 nm</span>
+                <span id="kpiSubLoe" class="text-xs font-semibold text-amber-600">CD 21.36 nm</span>
+              </div>
+              <p id="kpiDescLoe" class="text-[11px] text-slate-500 mt-1.5">Depth 120.57 nm 유사 · 측벽 방향만 과식각</p>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500">Active Hold Lots</span>
+                <span id="kpiIconHold" class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-boxes-stacked"></i></span>
+              </div>
+              <div class="mt-2.5 flex items-baseline gap-2">
+                <span id="kpiValHold" class="text-2xl font-mono font-extrabold text-amber-600">3 Lots</span>
+                <span id="kpiSubHold" class="text-xs font-mono font-semibold text-slate-500">B01 ~ B03</span>
+              </div>
+              <p id="kpiDescHold" class="text-[11px] text-slate-500 mt-1.5">ET-04-ChB 경유 30 WF 격리 및 QA 샘플링 중</p>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm cursor-pointer hover:border-blue-400 transition" onclick="switchTab('ecr')">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500">ET-04-ChB 설비 / 결재 상태</span>
+                <span id="kpiIconEquip" class="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></span>
+              </div>
+              <div class="mt-2.5 flex items-center gap-2">
+                <span id="kpiValEquip" class="text-lg font-extrabold text-red-600">INTERLOCK</span>
+                <span id="kpiSubEquip" class="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">결재 대기</span>
+              </div>
+              <p id="kpiDescEquip" class="text-[11px] text-slate-500 mt-1.5">PM 2,800 WF 이후 RF 1031.52W (UCL 1020W 초과)</p>
+            </div>
+          </div>
+
+          <!-- 6개 유관 부서 협업 조직도 (6인 선임 + 신입 이채련) -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h2 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <i class="fa-solid fa-sitemap text-blue-600"></i>넥사세미 FAB-M16 1c DDR5 수율 TF 조직도 (6개 유관 파트)
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">부서별 R&amp;R 분리 및 실제 반도체 Fab 트러블슈팅 의사결정 체계</p>
+              </div>
+              <span class="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-semibold">TF 코드: TF-M16-BCAT-0715</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
+              <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-bold text-slate-800">1. 수율개선팀 (YE)</span>
+                  <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">이슈 발의</span>
+                </div>
+                <div class="font-extrabold text-slate-900 text-sm">정준재 선임</div>
+                <p class="text-[11px] text-slate-600 mt-1">LOT-260715-B01~B03 Retention 이상 감지, 3대 가설(설비·레시피·Gas) 원인 규명 업무 지시</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-bold text-slate-800">2. CP(Circuit Probe)파트</span>
+                  <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold">전기적 평가</span>
+                </div>
+                <div class="font-extrabold text-slate-900 text-sm">박성한 선임</div>
+                <p class="text-[11px] text-slate-600 mt-1">01_cp_retention_test_data.csv 제공 (85°C·Hold Time 64→128ms 열화 및 Leakage 773.24 pA 검출)</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl border-2 border-blue-500 bg-blue-50/50">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-bold text-blue-900">3. 공정기술팀 (Etch 파트장)</span>
+                  <span class="px-2 py-0.5 rounded bg-blue-600 text-white text-[10px] font-bold">최종 결재자</span>
+                </div>
+                <div class="font-extrabold text-blue-950 text-sm">최지훈 책임</div>
+                <p class="text-[11px] text-blue-900/80 mt-1">ECR-2026-0715-04 레시피 변경 및 설비 협업안 최종 심사 (1차 반려 → 공학 검증 후 2차 승인)</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-bold text-slate-800">4. 공정기술팀 (Etch 사수 &amp; 담당)</span>
+                  <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold">본인 소속</span>
+                </div>
+                <div class="font-extrabold text-slate-900 text-sm">조형우 선임 · <span class="text-blue-700">이채련 사원(본인)</span></div>
+                <p class="text-[11px] text-slate-600 mt-1">표준 레시피(RCP_BCAT_STD_V2) 및 SOP 제공 / NexaAI 에이전트 구축·DOE Step-Down 최적화 주도</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-bold text-slate-800">5. 설비기술팀 (Etch 설비)</span>
+                  <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">하드웨어 협업</span>
+                </div>
+                <div class="font-extrabold text-slate-900 text-sm">조병현 선임</div>
+                <p class="text-[11px] text-slate-600 mt-1">02_fdc_etch_sensor_log.csv 제공, 노후 RF Matcher 가변 커패시터 교체 및 VI Probe Interlock 구축</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-bold text-slate-800">6. 품질보증팀 (QA / 계측)</span>
+                  <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">검증 · 출하</span>
+                </div>
+                <div class="font-extrabold text-slate-900 text-sm">최정 선임</div>
+                <p class="text-[11px] text-slate-600 mt-1">Hold Lot CD 계측(Depth 120.6nm vs CD 21.36nm) 및 27-Run DOE 검증 후 Hold Lot 출하 판정</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ② 기존 수동 방식(As-Is) vs NexaAI 도입(To-Be) 비교 -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="bg-white rounded-2xl p-5 border border-rose-200 shadow-sm">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-extrabold text-rose-900 flex items-center gap-2">
+                  <i class="fa-solid fa-hourglass-half text-rose-600"></i>기존 수동 트러블슈팅 한계 (As-Is)
+                </h3>
+                <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700">평균 2~3일 소요</span>
+              </div>
+              <ul class="space-y-2.5 text-xs text-slate-700">
+                <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-rose-500 mt-0.5"></i><span><strong>데이터 사일로(Silo) 병목:</strong> 비정형 사내 메일, CP 로그, FDC 시계열, QA CD 계측, 과거 SOP가 각기 다른 시스템에 분산되어 수동 취합·전처리에 수일 지연</span></li>
+                <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-rose-500 mt-0.5"></i><span><strong>기존 단일 알람의 맹점:</strong> 레시피 설정값(1000W) 자체는 정상이고 PM 2,800매 이후 서서히 드리프트(+2% 초과)하는 유형은 단순 레시피 점검으로 조기 탐지 불가</span></li>
+                <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-rose-500 mt-0.5"></i><span><strong>신입 엔지니어 경험 격차:</strong> 설비·레시피·Gas 가설을 시행착오로 접근하다 Hold Lot 적체 및 설비 Down-time 손실 확대</span></li>
+              </ul>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 border border-blue-200 shadow-sm">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-extrabold text-blue-950 flex items-center gap-2">
+                  <i class="fa-solid fa-bolt text-blue-600"></i>NexaAI 에이전트 도입 효과 (To-Be)
+                </h3>
+                <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">수 분 내 자율 RCA</span>
+              </div>
+              <ul class="space-y-2.5 text-xs text-slate-700">
+                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-600 mt-0.5"></i><span><strong>비정형+정형 오케스트레이션:</strong> 메일에서 3대 가설을 추출하고 6개 통계·RAG 도구를 자율 호출(Function Calling)하여 p=1.34e-27 수준으로 Source RF Drift 즉시 특정</span></li>
+                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-600 mt-0.5"></i><span><strong>공정 물리 검증 루프:</strong> AI 1차 초안(Main 850W 일괄 하향 → Depth 107.4nm 미달)을 엔지니어가 제약 조건으로 보완해 DOE 회귀(R²=0.9977) 기반 최적 Step-Down 도출</span></li>
+                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-600 mt-0.5"></i><span><strong>전사 표준화 및 수평 전개:</strong> 측벽 과식각 82.2% 저감, Retention 139.4ms 회복, 타 챔버 PM 2,500 WF 및 VI Probe Interlock 표준 적용</span></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             TAB 2: 사내 메일함 (NexaMail — 3-Pane Webmail + Real CSV Downloads)
+        ================================================================= -->
+        <section id="tab-mail" class="tab-panel hidden space-y-4 animate-fade-up">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h1 class="text-xl font-extrabold text-slate-900">사내 메일함 (NexaMail)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">이채련 사원 (cr.lee@nexasemi.com) · 6개 유관 부서 긴급 이슈 메일 및 실측 CSV 데이터 첨부함</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <button onclick="downloadExactCsv('cp')" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-blue-50 font-semibold text-slate-700"><i class="fa-solid fa-file-csv text-emerald-600 mr-1"></i>01_CP CSV</button>
+              <button onclick="downloadExactCsv('fdc')" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-blue-50 font-semibold text-slate-700"><i class="fa-solid fa-file-csv text-blue-600 mr-1"></i>02_FDC CSV</button>
+              <button onclick="downloadExactCsv('doe')" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-blue-50 font-semibold text-slate-700"><i class="fa-solid fa-file-csv text-indigo-600 mr-1"></i>03_DOE CSV</button>
+            </div>
+          </div>
+
+          <!-- 3-Pane 메일 클라이언트 -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[600px]">
+            <!-- Pane 1: 폴더 & 빠른 필터 -->
+            <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col gap-1.5">
+              <button id="folderInboxBtn" onclick="selectMailFolder('inbox')" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold">
+                <span><i class="fa-solid fa-inbox mr-2"></i>받은편지함</span>
+                <span id="folderInboxCount" class="px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px]">6</span>
+              </button>
+              <button id="folderSentBtn" onclick="selectMailFolder('sent')" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-50 text-xs font-semibold">
+                <span><i class="fa-solid fa-paper-plane mr-2"></i>보낸편지함</span>
+                <span id="folderSentCount" class="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px]">0</span>
+              </button>
+              <div class="mt-4 pt-3 border-t border-slate-100">
+                <div class="text-[10px] font-bold text-slate-400 uppercase px-2 mb-2">첨부 CSV 데이터 (Python 100% 일치)</div>
+                <div class="space-y-1.5">
+                  <button onclick="downloadExactCsv('cp')" class="w-full text-left px-2.5 py-2 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 text-[11px] font-mono text-slate-700 truncate transition" title="60 rows">
+                    <i class="fa-solid fa-download text-emerald-600 mr-1"></i>01_cp_retention (60행)
+                  </button>
+                  <button onclick="downloadExactCsv('fdc')" class="w-full text-left px-2.5 py-2 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200/80 text-[11px] font-mono text-slate-700 truncate transition" title="60 rows">
+                    <i class="fa-solid fa-download text-blue-600 mr-1"></i>02_fdc_sensor (60행)
+                  </button>
+                  <button onclick="downloadExactCsv('doe')" class="w-full text-left px-2.5 py-2 rounded-lg bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 text-[11px] font-mono text-slate-700 truncate transition" title="27 rows">
+                    <i class="fa-solid fa-download text-indigo-600 mr-1"></i>03_doe_stepdown (27행)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pane 2: 메일 목록 -->
+            <div class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+              <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <span id="mailPaneTitle" class="text-xs font-bold text-slate-700">받은편지함 (최신순)</span>
+                <span id="mailUnreadLabel" class="text-[11px] font-semibold text-blue-600">미열람 3건</span>
+              </div>
+              <div id="mailListBody" class="divide-y divide-slate-100 overflow-y-auto max-h-[600px] flex-1"></div>
+            </div>
+
+            <!-- Pane 3: 메일 본문 뷰어 -->
+            <div class="lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+              <div id="mailReaderBody" class="p-6 overflow-y-auto flex-1"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             TAB 3: FDC · CP 모니터링
+        ================================================================= -->
+        <section id="tab-monitoring" class="tab-panel hidden space-y-5 animate-fade-up">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-extrabold text-slate-900">FDC · CP 실시간 공정 모니터링</h1>
+              <p class="text-xs text-slate-500 mt-0.5">ET-04-ChA vs ET-04-ChB 센서 시계열(60 WF) · 3대 가설 t-test 검증 · BCAT 단면 공학 모식도</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="downloadExactCsv('fdc')" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-download text-blue-600 mr-1"></i>FDC 로그 CSV</button>
+              <button onclick="switchTab('ai')" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700"><i class="fa-solid fa-robot mr-1"></i>NexaAI로 자동 분석</button>
+            </div>
+          </div>
+
+          <!-- 3대 가설 통계 검정 요약 카드 -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-500">H1. 공정 레시피 설정 오류</span>
+                <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">기각 (RULED OUT)</span>
+              </div>
+              <div class="text-base font-mono font-extrabold text-slate-800">Set Point 1000 W 일치</div>
+              <p class="text-[11px] text-slate-500 mt-1">전 60 WF 모두 표준 레시피 <code class="font-mono">RCP_BCAT_STD_V2</code> 정상 적용</p>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-500">H2. Etch Gas MFC 유량 이상</span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">기각 (정상)</span>
+              </div>
+              <div class="text-base font-mono font-extrabold text-emerald-700">전 Gas p &gt; 0.05</div>
+              <p class="text-[11px] text-slate-500 mt-1">Cl2(p=0.876), HBr(p=0.3996), O2(p=0.5146), 압력(p=0.6713)</p>
+            </div>
+
+            <div class="bg-red-50/70 rounded-2xl p-4 border-2 border-red-300 shadow-sm">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-red-800">H3. 설비 Source RF Drift ★</span>
+                <span class="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">확정 (CONFIRMED)</span>
+              </div>
+              <div class="text-base font-mono font-extrabold text-red-700">1031.52 W (p=1.34e-27)</div>
+              <p class="text-[11px] text-red-800 mt-1">PM 2,800 WF 이후 UCL(1020W) 초과 · Matcher V-Cap 98.05% 포화</p>
+            </div>
+          </div>
+
+          <!-- 차트 그리드 Row 1 -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-sm font-extrabold text-slate-900">1. Wafer Sequence별 Source RF Power 추이 (WF 1–60)</h3>
+                  <p class="text-[11px] text-slate-500">WF 31~60 (ET-04-ChB Fail Region)에서 UCL 1020W(+2%) 상회 High-side Drift</p>
+                </div>
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">t=19.91</span>
+              </div>
+              <div class="chart-box"><canvas id="chartRfSeq"></canvas></div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-sm font-extrabold text-slate-900">2. PM 후 누적 웨이퍼 수 대비 RF Drift (%) 추이</h3>
+                  <p class="text-[11px] text-slate-500">PM 2,800 WF 경계에서 +2.0% UCL 돌파 · V-Cap 포화(98.05%) 동반</p>
+                </div>
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">변곡점 2,800 WF</span>
+              </div>
+              <div class="chart-box"><canvas id="chartPmDrift"></canvas></div>
+            </div>
+          </div>
+
+          <!-- 차트 그리드 Row 2: CP Retention + BCAT 공학 단면 모식도 -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div class="lg:col-span-6 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+              <div class="mb-2">
+                <h3 class="text-sm font-extrabold text-slate-900">3. CP Data Retention 및 고온(85°C)·Hold Time별 Fail PPM</h3>
+                <p class="text-[11px] text-slate-500">정상(139.3ms · 18.2ppm) vs 불량(90.0ms · 388.6ppm), r(RF↔Retention) = -0.9772</p>
+              </div>
+              <div class="chart-box"><canvas id="chartCpFail"></canvas></div>
+            </div>
+
+            <!-- BCAT 공학 단면 모식도 (비전 AI 아닌 순수 물리 구조 비교) -->
+            <div class="lg:col-span-6 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div class="mb-3">
+                <h3 class="text-sm font-extrabold text-slate-900">4. BCAT Recess Etch 측벽 과식각 물리 단면 모식도</h3>
+                <p class="text-[11px] text-slate-500">r(RF↔Radical)=0.9974 · r(RF↔TrenchCD)=0.9927 → Si Active 축소 &amp; 접합 누설 303배 폭증</p>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
+                  <div class="text-[11px] font-bold text-emerald-800 mb-1.5 text-center">정상 Lot (Ch.A · 1002.2W)</div>
+                  <svg viewBox="0 0 220 155" class="w-full h-auto rounded-lg bg-slate-900">
+                    <rect x="0" y="45" width="220" height="110" fill="#334155"></rect>
+                    <rect x="10" y="45" width="65" height="30" fill="#0ea5e9" opacity="0.65"></rect>
+                    <rect x="145" y="45" width="65" height="30" fill="#0ea5e9" opacity="0.65"></rect>
+                    <rect x="0" y="25" width="75" height="20" fill="#64748b"></rect>
+                    <rect x="145" y="25" width="75" height="20" fill="#64748b"></rect>
+                    <path d="M75,25 L75,130 Q75,136 82,136 L138,136 Q145,136 145,130 L145,25 Z" fill="#0f172a" stroke="#34d399" stroke-width="2"></path>
+                    <line x1="77" y1="90" x2="143" y2="90" stroke="#34d399" stroke-width="1.5"></line>
+                    <text x="110" y="84" fill="#6ee7b7" font-size="10" font-weight="bold" text-anchor="middle">CD 18.33 nm</text>
+                    <text x="110" y="108" fill="#cbd5e1" font-size="9" text-anchor="middle">Depth 120.15 nm</text>
+                    <text x="110" y="149" fill="#6ee7b7" font-size="9" text-anchor="middle">I_off = 2.55 pA</text>
+                  </svg>
+                </div>
+                <div class="rounded-xl border border-red-200 bg-red-50/40 p-3">
+                  <div class="text-[11px] font-bold text-red-800 mb-1.5 text-center">불량 Lot (Ch.B · 1031.5W)</div>
+                  <svg viewBox="0 0 220 155" class="w-full h-auto rounded-lg bg-slate-900">
+                    <rect x="0" y="45" width="220" height="110" fill="#334155"></rect>
+                    <rect x="10" y="45" width="65" height="30" fill="#0ea5e9" opacity="0.65"></rect>
+                    <rect x="145" y="45" width="65" height="30" fill="#0ea5e9" opacity="0.65"></rect>
+                    <rect x="0" y="25" width="75" height="20" fill="#64748b"></rect>
+                    <rect x="145" y="25" width="75" height="20" fill="#64748b"></rect>
+                    <path d="M75,25 L75,45 C58,68 58,112 65,132 Q67,136 76,136 L144,136 Q153,136 155,132 C162,112 162,68 145,45 L145,25 Z" fill="#0f172a" stroke="#f87171" stroke-width="2"></path>
+                    <circle cx="65" cy="65" r="10" fill="#ef4444" opacity="0.55"></circle>
+                    <circle cx="155" cy="65" r="10" fill="#ef4444" opacity="0.55"></circle>
+                    <line x1="60" y1="90" x2="160" y2="90" stroke="#f87171" stroke-width="1.5"></line>
+                    <text x="110" y="84" fill="#fca5a5" font-size="10" font-weight="bold" text-anchor="middle">CD 21.36 nm (+3.03)</text>
+                    <text x="110" y="108" fill="#cbd5e1" font-size="9" text-anchor="middle">Depth 120.57 nm</text>
+                    <text x="110" y="149" fill="#f87171" font-size="9" font-weight="bold" text-anchor="middle">I_off = 773.24 pA (303×)</text>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hold Lot 추적 테이블 -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="text-sm font-extrabold text-slate-900"><i class="fa-solid fa-table text-blue-600 mr-2"></i>이상 Lot 추적 및 상태 테이블 (ET-04-ChB 경유)</h3>
+              <span id="holdTableSummaryBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">3 Lots HOLD 격리 중</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                  <tr>
+                    <th class="px-4 py-2.5">Lot ID</th>
+                    <th class="px-4 py-2.5">설비 챔버</th>
+                    <th class="px-4 py-2.5">PM 누적 WF</th>
+                    <th class="px-4 py-2.5">평균 Source RF</th>
+                    <th class="px-4 py-2.5">Trench CD / Depth</th>
+                    <th class="px-4 py-2.5">Retention / Fail PPM</th>
+                    <th class="px-4 py-2.5">현재 상태</th>
+                  </tr>
+                </thead>
+                <tbody id="holdLotTableBody" class="divide-y divide-slate-100 font-mono text-slate-700"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             TAB 4: NexaAI 트러블슈팅 (6-Step Tool Calling Pipeline + Hybrid Chatbot)
+        ================================================================= -->
+        <section id="tab-ai" class="tab-panel hidden space-y-5 animate-fade-up">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="text-xl font-extrabold text-slate-900">NexaAI 자율 트러블슈팅 에이전트</h1>
+                <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-mono font-bold">Function Calling + RAG</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">Python 에이전트(`nexa_ai_agent.py`)의 6개 도구 호출 파이프라인 및 실시간 질의응답 챗봇 (이미지 비전 탐지 미사용)</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openGeminiConfigModal()" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                <i class="fa-solid fa-sliders text-indigo-600 mr-1.5"></i>API 모드: <span id="aiModeLabel" class="font-bold text-emerald-700">오프라인 도메인 엔진</span>
+              </button>
+              <button id="runSixStepBtn" onclick="runSixStepAgent()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition flex items-center gap-2">
+                <i class="fa-solid fa-play"></i>6단계 AI 에이전트 자율 분석 실행
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <!-- 좌측: 6단계 Tool-Calling 자율 분석 파이프라인 -->
+            <div class="xl:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+              <div class="px-5 py-3 bg-corp-900 text-white flex items-center justify-between">
+                <span class="text-xs font-mono font-bold"><i class="fa-solid fa-terminal text-cyan-400 mr-2"></i>AGENT EXECUTION TRACE · nexa_ai_agent.py</span>
+                <span id="agentTraceStatus" class="px-2 py-0.5 rounded bg-slate-700 text-slate-200 text-[10px] font-semibold">대기 중</span>
+              </div>
+              <div id="agentStepsList" class="p-4 space-y-3 flex-1 overflow-y-auto max-h-[640px]"></div>
+              <div id="agentNextActionFooter" class="hidden px-5 py-3.5 bg-indigo-50 border-t border-indigo-200 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-bold text-indigo-900"><i class="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i>6단계 자율 RCA 및 DOE-03 검증 완료!</span>
+                <button onclick="applyEcrPreset('approved'); switchTab('ecr');" class="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition">
+                  검증된 DOE-03 레시피로 결재 상신 이동 <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 우측: NexaAI 하이브리드 챗봇 -->
+            <div class="xl:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden min-h-[600px]">
+              <div class="px-4 py-3 bg-slate-50 border-b border-slate-200">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-slate-800"><i class="fa-solid fa-comments text-indigo-600 mr-1.5"></i>NexaAI 엔지니어링 어시스턴트</span>
+                  <span class="text-[10px] font-mono text-slate-400">Ground-Truth Linked</span>
+                </div>
+                <!-- 발표 시연 추천 질문 5개 칩 -->
+                <div class="mt-2.5 flex flex-wrap gap-1.5">
+                  <button onclick="triggerQuickChat('3대 가설(레시피·Gas·설비)을 통계적으로 어떻게 판별했나요?')" class="px-2 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-700 text-[11px] text-slate-600 transition">① 3대 가설 t-test 판별</button>
+                  <button onclick="triggerQuickChat('Source RF 드리프트가 BCAT 측벽 과식각과 Retention 불량으로 이어지는 물리 메커니즘은?')" class="px-2 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-700 text-[11px] text-slate-600 transition">② BCAT 물리 메커니즘</button>
+                  <button onclick="triggerQuickChat('1차 AI 초안(Main Etch 850W 일괄 하향)이 왜 반려되었나요?')" class="px-2 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-700 text-[11px] text-slate-600 transition">③ 1차 초안 반려 이유</button>
+                  <button onclick="triggerQuickChat('27-Run DOE ANOVA와 회귀분석으로 찾은 최적 Step-Down 레시피를 알려줘')" class="px-2 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-700 text-[11px] text-slate-600 transition">④ DOE-03 최적 레시피</button>
+                  <button onclick="triggerQuickChat('기존 수동 방식 대비 AI 에이전트 도입의 핵심 차이와 기대 효과는?')" class="px-2 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-700 text-[11px] text-slate-600 transition">⑤ As-Is vs To-Be 효과</button>
+                </div>
+              </div>
+
+              <!-- 채팅 메시지 로그 -->
+              <div id="chatLogContainer" class="p-4 flex-1 overflow-y-auto space-y-3 bg-slate-50/50 text-xs max-h-[420px]">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0"><i class="fa-solid fa-robot text-[11px]"></i></div>
+                  <div class="bg-white border border-slate-200 rounded-xl rounded-tl-none px-3.5 py-2.5 text-slate-700 shadow-sm leading-relaxed">
+                    안녕하세요, 이채련 사원님! <strong>NexaAI 트러블슈팅 에이전트</strong>입니다.<br />
+                    왼쪽 <strong>6단계 자율 분석</strong>을 실행하거나, 위의 추천 질문 칩을 눌러 1c DDR5 BCAT 불량의 통계 검정·물리 메커니즘·DOE-03 최적화 근거를 바로 확인해 보세요.
+                  </div>
+                </div>
+              </div>
+
+              <!-- 채팅 입력 바 -->
+              <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
+                <input
+                  id="chatPromptInput"
+                  type="text"
+                  placeholder="공정 데이터, DOE 회귀식, 설비 협업 방안에 대해 질문하세요..."
+                  onkeydown="if(event.key==='Enter') handleChatSubmit()"
+                  class="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500"
+                />
+                <button onclick="handleChatSubmit()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shrink-0">전송</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             TAB 5: 레시피 DOE · 전자결재 (ECR-2026-0715-04)
+        ================================================================= -->
+        <section id="tab-ecr" class="tab-panel hidden space-y-5 animate-fade-up">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-corp-900 text-white text-[10px] font-mono font-bold">ECR-2026-0715-04</span>
+                <span class="text-xs text-slate-500">1c DDR5 BCAT Recess Etch 공정 변경 전자결재</span>
+              </div>
+              <h1 class="text-xl font-extrabold text-slate-900 mt-0.5">레시피 DOE 시뮬레이터 &amp; 전자결재 상신</h1>
+            </div>
+            <!-- 원클릭 시연 프리셋 버튼 2개 -->
+            <div class="flex flex-wrap gap-2">
+              <button onclick="applyEcrPreset('rejected')" class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 text-xs font-bold transition">
+                <i class="fa-solid fa-rotate-left mr-1"></i>AI 1차 초안 불러오기 (반려 시연)
+              </button>
+              <button onclick="applyEcrPreset('approved')" class="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition">
+                <i class="fa-solid fa-check-double mr-1"></i>공학 검증 개선안 불러오기 (승인 시연)
+              </button>
+            </div>
+          </div>
+
+          <!-- 결재선 헤더 -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="text-xs font-bold text-slate-700">
+              <i class="fa-solid fa-diagram-next text-blue-600 mr-1.5"></i>전자결재선 (Approval Line)
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <div class="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
+                기안: <strong>이채련 사원</strong> <span class="text-[10px] ml-1">(작성)</span>
+              </div>
+              <i class="fa-solid fa-arrow-right text-slate-400 text-[10px]"></i>
+              <div class="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-semibold">
+                검토: <strong>조형우 선임</strong> <span class="text-[10px] ml-1">(사수 확인)</span>
+              </div>
+              <i class="fa-solid fa-arrow-right text-slate-400 text-[10px]"></i>
+              <div id="approverLineChip" class="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 font-bold">
+                최종결재: <strong>최지훈 책임</strong> <span id="approverLineState" class="text-[10px] ml-1">(심사 대기)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <!-- 좌측: ECR 입력 폼 -->
+            <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+              <!-- 1. 근본 원인 선택 -->
+              <div>
+                <label for="ecrRootCause" class="block text-xs font-extrabold text-slate-800 mb-1.5">1. 규명한 근본 원인 선택</label>
+                <select id="ecrRootCause" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs text-slate-800 bg-white focus:outline-none focus:border-blue-600">
+                  <option value="">-- 원인 분석 결과를 선택하세요 --</option>
+                  <option value="rf_drift">설비 Source RF 출력 편차(+2% Drift, PM 2,800 WF 이후) → Plasma/Radical 증가 → BCAT 측벽 Lateral Over-Etch</option>
+                  <option value="recipe_error">작업자 공정 레시피 입력 오류 (Set Point 오기입)</option>
+                  <option value="gas_mfc">과식각 유발 Etch Gas MFC 유량 제어 불량</option>
+                  <option value="wafer_defect">원재료 Wafer 자체 결함 및 Hard Mask 이상</option>
+                </select>
+              </div>
+
+              <!-- 2. DOE 레시피 파라미터 슬라이더 4종 -->
+              <div class="border-t border-slate-100 pt-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-slate-800">2. BCAT Recess Etch Step-Down 레시피 설정</span>
+                  <span class="text-[11px] font-mono text-slate-400">기준: Main 1000W / OE 1000W / 100mTorr / Bias 50W</span>
+                </div>
+
+                <!-- Main Etch Source RF -->
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="font-bold text-slate-700">Main Etch Source RF Power (수직 깊이 확보 구간)</span>
+                    <span class="font-mono font-extrabold text-blue-700"><span id="lblMainRf">1000</span> W</span>
+                  </div>
+                  <input id="inpMainRf" type="range" min="750" max="1050" step="10" value="1000" oninput="recalcEcrPreview()" class="w-full" />
+                  <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>750W (Under-Etch 위험)</span><span class="text-blue-600 font-semibold">권장 ≥ 960W (1000W 유지)</span><span>1050W</span></div>
+                </div>
+
+                <!-- Over-Etch Step-Down RF -->
+                <div class="p-3 rounded-xl bg-blue-50/50 border border-blue-200/80">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="font-bold text-blue-950">Over-Etch Step-Down Source RF Power (측벽 보호 구간)</span>
+                    <span class="font-mono font-extrabold text-blue-700"><span id="lblOeRf">1000</span> W</span>
+                  </div>
+                  <input id="inpOeRf" type="range" min="750" max="1050" step="10" value="1000" oninput="recalcEcrPreview()" class="w-full" />
+                  <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>750W</span><span class="text-blue-700 font-semibold">DOE-03 최적: 800W (≤ 850W)</span><span>1050W</span></div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Chamber Pressure -->
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div class="flex justify-between text-xs mb-1">
+                      <span class="font-bold text-slate-700">Chamber Pressure</span>
+                      <span class="font-mono font-extrabold text-blue-700"><span id="lblPressure">100</span> mTorr</span>
+                    </div>
+                    <input id="inpPressure" type="range" min="40" max="110" step="5" value="100" oninput="recalcEcrPreview()" class="w-full" />
+                    <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>40</span><span class="text-blue-600 font-semibold">최적 50 mTorr (≤60)</span><span>110</span></div>
+                  </div>
+
+                  <!-- Bias Power -->
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div class="flex justify-between text-xs mb-1">
+                      <span class="font-bold text-slate-700">Bias Power (이온 직진성)</span>
+                      <span class="font-mono font-extrabold text-blue-700"><span id="lblBias">50</span> W</span>
+                    </div>
+                    <input id="inpBias" type="range" min="30" max="80" step="5" value="50" oninput="recalcEcrPreview()" class="w-full" />
+                    <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>30W</span><span class="text-blue-600 font-semibold">최적 70W (≥65W)</span><span>80W</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. 설비기술팀 협업 요청 체크박스 -->
+              <div class="border-t border-slate-100 pt-4">
+                <div class="text-xs font-extrabold text-slate-800 mb-2">3. 설비기술팀(조병현 선임) 하드웨어 근본 조치 협업 요청</div>
+                <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 hover:bg-blue-50/40 cursor-pointer text-xs text-slate-700">
+                  <input id="chkEquipCollab" type="checkbox" class="mt-0.5 rounded text-blue-600 focus:ring-blue-500" />
+                  <span>
+                    <strong>ET-04-ChB 노후 Matcher 가변 커패시터 교체 및 VI Probe 실시간 Interlock(+2% / 1020W) 구축, PM 주기 2,500 WF 단축 동시 요청</strong>
+                  </span>
+                </label>
+              </div>
+
+              <!-- 4. 기안자 검토 소견 -->
+              <div>
+                <label for="ecrMemo" class="block text-xs font-extrabold text-slate-800 mb-1">4. 기안자(이채련) 공학 검토 소견</label>
+                <textarea id="ecrMemo" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-blue-600">27-Run DOE ANOVA 및 다중회귀분석(R²=0.9977) 검증 결과를 바탕으로 BCAT Recess Etch 레시피 개선안을 상신합니다.</textarea>
+              </div>
+
+              <!-- 결재 상신 버튼 -->
+              <button onclick="submitEcrToManager()" class="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-sm font-extrabold shadow-lg transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-stamp"></i>
+                <span>최지훈 책임님께 결재 상신</span>
+              </button>
+            </div>
+
+            <!-- 우측: 실시간 회귀 예측 KPI + 최지훈 책임 심사 결과 카드 + 상신 이력 타임라인 -->
+            <div class="lg:col-span-5 space-y-4">
+              <!-- 실시간 예측 프리뷰 -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3.5">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-sm font-extrabold text-slate-900"><i class="fa-solid fa-calculator text-blue-600 mr-1.5"></i>실시간 DOE 회귀·물리 예측</h3>
+                  <span id="ecrSpecBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">SPEC 이탈</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-[11px] text-slate-500">예상 Etch Depth</div>
+                    <div id="prevDepth" class="text-lg font-mono font-extrabold text-slate-900 mt-0.5">121.50 nm</div>
+                    <div class="text-[10px] text-slate-400">하한 스펙: ≥ 118.0 nm</div>
+                  </div>
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-[11px] text-slate-500">예상 Lateral Over-Etch</div>
+                    <div id="prevLoe" class="text-lg font-mono font-extrabold text-red-600 mt-0.5">3.44 nm</div>
+                    <div class="text-[10px] text-slate-400">목표 기준: ≤ 1.00 nm</div>
+                  </div>
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-[11px] text-slate-500">예상 Trench CD</div>
+                    <div id="prevCd" class="text-lg font-mono font-extrabold text-red-600 mt-0.5">21.44 nm</div>
+                    <div class="text-[10px] text-slate-400">Target: 18.0 ±1.0 nm</div>
+                  </div>
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="text-[11px] text-slate-500">예상 Retention Time</div>
+                    <div id="prevRet" class="text-lg font-mono font-extrabold text-red-600 mt-0.5">90.0 ms</div>
+                    <div class="text-[10px] text-slate-400">목표 기준: ≥ 130.0 ms</div>
+                  </div>
+                </div>
+
+                <div id="ecrDepthAlert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-800 font-semibold">
+                  <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>경고: Main Etch RF 과도 하향으로 예상 Etch Depth가 하한(118nm)에 미달하여 Under-Etch 불량이 발생합니다!
+                </div>
+
+                <div class="p-2.5 rounded-lg bg-slate-900 text-slate-200 font-mono text-[10.5px] leading-relaxed">
+                  LOE = -3.6356 + 0.00552·OE_RF + 0.02527·P - 0.01994·Bias (R²=0.9977)
+                </div>
+              </div>
+
+              <!-- 최지훈 책임 실시간 심사 결과 카드 -->
+              <div id="managerDecisionCard" class="hidden bg-white rounded-2xl border-2 shadow-md p-5 space-y-3 animate-fade-up">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-full bg-corp-900 text-white flex items-center justify-center text-xs font-bold">지훈</div>
+                    <div>
+                      <div class="text-xs font-extrabold text-slate-900">공정기술팀 최지훈 책임</div>
+                      <div class="text-[10px] text-slate-500">ECR-2026-0715-04 심사 회신</div>
+                    </div>
+                  </div>
+                  <span id="managerStamp" class="stamp-animate px-3 py-1 rounded-lg border-2 font-mono font-black text-xs">APPROVED</span>
+                </div>
+                <div id="managerSpeechBox" class="p-3.5 rounded-xl border-l-4">
+                  <div id="managerQuote" class="text-base font-extrabold"></div>
+                  <div id="managerDetail" class="text-xs mt-1.5 leading-relaxed"></div>
+                </div>
+              </div>
+
+              <!-- 결재 상신 이력 타임라인 (1차 반려 → 2차 승인 기록) -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                <h3 class="text-xs font-extrabold text-slate-800 mb-3 flex items-center gap-1.5">
+                  <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>결재 상신 이력 타임라인 (Verification &amp; Iteration)
+                </h3>
+                <div id="ecrTimelineList" class="space-y-2.5 text-xs text-slate-500">
+                  <div class="p-3 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center text-[11px]">
+                    아직 상신 이력이 없습니다. 상단의 <strong>[AI 1차 초안 불러오기]</strong>로 반려를 시연한 뒤 <strong>[공학 검증 개선안 불러오기]</strong>로 2차 승인을 체험해 보세요.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================
+             TAB 6: 사내 SOP · 기술위키 (Searchable RAG Knowledge Base)
+        ================================================================= -->
+        <section id="tab-wiki" class="tab-panel hidden space-y-5 animate-fade-up">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-extrabold text-slate-900">사내 SOP · 기술위키 (RAG Knowledge Base)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">NexaAI 에이전트가 `search_internal_sop_rag()` 도구로 검색하는 공식 공정 표준 및 과거 트러블슈팅 문서</p>
+            </div>
+            <div class="relative w-full sm:w-72">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input id="wikiSearchInput" type="text" oninput="filterWikiCards(this.value)" placeholder="문서번호, RF, Step-Down, DOE 검색..." class="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:border-blue-600" />
+            </div>
+          </div>
+
+          <div id="wikiCardsContainer" class="grid grid-cols-1 gap-5">
+            <!-- SOP-ET-104 -->
+            <article class="wiki-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-keywords="sop-et-104 bcat recess etch rcp_bcat_std_v2 1000w ucl 1020w standard recipe 조형우">
+              <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded bg-blue-600 text-white text-[11px] font-mono font-bold">SOP-ET-104</span>
+                  <h2 class="text-sm font-extrabold text-slate-900">1c DDR5 BCAT Recess Etch 표준 공정 사양 (RCP_BCAT_STD_V2)</h2>
+                </div>
+                <span class="text-[11px] text-slate-500">관리자: 공정기술팀 조형우 선임 · Rev 4.1</span>
+              </div>
+              <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-700 leading-relaxed">
+                <div>
+                  <h4 class="font-bold text-slate-900 mb-2">표준 공정 파라미터 및 관리 한계</h4>
+                  <ul class="space-y-1.5 font-mono text-[11.5px]">
+                    <li>• Recipe ID: <strong>RCP_BCAT_STD_V2</strong> (Flat Power 방식)</li>
+                    <li>• Source RF Set Point: <strong>1,000 W</strong> (Alert +1.5% / <span class="text-red-600 font-bold">UCL +2.0% = 1,020 W</span>)</li>
+                    <li>• Chamber Pressure: <strong>100 mTorr</strong> / Bias Power: <strong>50 W</strong></li>
+                    <li>• Main Etch Gas: Cl2 60 sccm / HBr 120 sccm / O2 15 sccm</li>
+                    <li>• 계측 Target: <strong>Trench CD 18.0 ±1.0 nm</strong> · <strong>Etch Depth ≥ 118.0 nm</strong> (Target 120 nm)</li>
+                  </ul>
+                </div>
+                <div class="bg-blue-50/50 rounded-xl p-3.5 border border-blue-100">
+                  <h4 class="font-bold text-blue-900 mb-1.5">공정 물리 핵심 유의사항</h4>
+                  <p>BCAT 매립형 게이트 구조에서 수직 식각 깊이(Depth)는 최소 118.0 nm 이상 확보해야 채널 누설을 막을 수 있습니다. 반대로 측벽 방향(Lateral) 과식각이 진행되어 Trench CD가 19.5 nm를 초과하면 인접 Si Active가 축소되고 N+ Junction 영역의 Plasma/Ion Damage로 Off-state 누설 전류와 Data Retention 불량이 지수적으로 급증합니다.</p>
+                </div>
+              </div>
+            </article>
+
+            <!-- CASE-2025-11 -->
+            <article class="wiki-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-keywords="case-2025-11 matcher v-cap drift 2800 wf radical flux lateral over-etch 설비 조병현 vi probe">
+              <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded bg-amber-600 text-white text-[11px] font-mono font-bold">CASE-2025-11</span>
+                  <h2 class="text-sm font-extrabold text-slate-900">과거 불량 사례: Recess Etch RF Matcher 가변 커패시터 포화 및 High-side Drift</h2>
+                </div>
+                <span class="text-[11px] text-slate-500">작성: 설비기술팀 조병현 선임 · 2025.11</span>
+              </div>
+              <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-700 leading-relaxed">
+                <div>
+                  <h4 class="font-bold text-slate-900 mb-1.5">발생 메커니즘 요약</h4>
+                  <p>PM 후 누적 웨이퍼 처리량이 2,800 WF를 초과할 무렵 노후 RF Matching Network의 가변 커패시터(V-Cap) 위치가 95~98% 이상 포화되면서 임피던스 부정합과 출력 보정 오차가 누적됩니다. 레시피 설정값(1000W)은 정상이나 실제 챔버 인가 Source RF가 +2~4% 상승하여 Plasma Density와 등방성 Radical Flux를 급격히 증가시킵니다.</p>
+                </div>
+                <div class="bg-amber-50/60 rounded-xl p-3.5 border border-amber-200">
+                  <h4 class="font-bold text-amber-900 mb-1.5">표준 시정 및 예방 조치</h4>
+                  <ul class="space-y-1">
+                    <li>1) 노후 RF Generator 및 Matcher 가변 커패시터 즉시 교체</li>
+                    <li>2) PM 주기를 기존 3,500 WF에서 <strong>2,500 WF 이하</strong>로 단축</li>
+                    <li>3) <strong>VI Probe</strong> 설치 후 실시간 Source RF +2.0%(1020W) 초과 시 자동 Interlock</li>
+                  </ul>
+                </div>
+              </div>
+            </article>
+
+            <!-- SPEC-DOE-09 -->
+            <article class="wiki-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-keywords="spec-doe-09 anova regression step-down 800w 50mtorr 70w r2 0.9977 doe-03 82.2%">
+              <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] font-mono font-bold">SPEC-DOE-09</span>
+                  <h2 class="text-sm font-extrabold text-slate-900">27-Run DOE · ANOVA 기반 Step-Down Recess Etch 레시피 최적화 표준</h2>
+                </div>
+                <span class="text-[11px] text-slate-500">검증: 공정기술팀 · 품질보증팀 최정 선임</span>
+              </div>
+              <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-700 leading-relaxed">
+                <div>
+                  <h4 class="font-bold text-slate-900 mb-1.5">통계 분석 결과 (3요인 3수준 Full Factorial)</h4>
+                  <ul class="space-y-1 font-mono text-[11.5px]">
+                    <li>• 회귀식: LOE = -3.6356 + 0.00552·OE_RF + 0.02527·P - 0.01994·Bias</li>
+                    <li>• 설명력: <strong>R² = 0.9977</strong> / Adj R² = 0.9974 (p &lt; 1e-9)</li>
+                    <li>• ANOVA F값: <strong>Pressure 2262.01</strong> &gt; <strong>OE_RF 1724.05</strong> &gt; <strong>Bias 901.36</strong></li>
+                    <li>• 교호작용: 모두 p &gt; 0.25 (유의하지 않음 → 독립 제어 가능)</li>
+                  </ul>
+                </div>
+                <div class="bg-emerald-50/60 rounded-xl p-3.5 border border-emerald-200">
+                  <h4 class="font-bold text-emerald-900 mb-1.5">최적 조건 (DOE-03) 및 검증 성과</h4>
+                  <p>Main Etch 출력(1000W)을 유지해 Depth 120.44 nm를 확보하면서 Over-Etch 구간만 <strong>800W Step-Down</strong>하고 압력을 <strong>50 mTorr</strong>로 낮추며 Bias를 <strong>70 W</strong>로 상향하면, 측벽 과식각이 <strong>3.44 nm → 0.61 nm(82.2% 저감)</strong>, Retention Time이 <strong>139.4 ms</strong>로 완전 회복됩니다.</p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ===================== Gemini API 선택 연동 모달 ===================== -->
+  <div id="geminiConfigModal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 space-y-4 animate-fade-up">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-extrabold text-slate-900"><i class="fa-solid fa-robot text-indigo-600 mr-1.5"></i>NexaAI 모델 연결 설정</h3>
+        <button onclick="closeGeminiConfigModal()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        기본적으로 API 키 없이도 Python 에이전트 검증 데이터와 100% 일치하는 <strong>내장 도메인 엔진</strong>이 즉시 작동합니다. 실시간 LLM 응답을 원하시면 Gemini API Key를 입력할 수 있습니다.
+      </p>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Gemini API Key (선택)</label>
+        <input id="geminiKeyInput" type="password" placeholder="AIza... (비워두면 오프라인 도메인 엔진 유지)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-indigo-600" />
+      </div>
+      <div class="flex justify-end gap-2">
+        <button onclick="closeGeminiConfigModal()" class="px-3.5 py-2 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">취소</button>
+        <button onclick="saveGeminiKey()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700">적용</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 토스트 알림 컨테이너 ===================== -->
+  <div id="toastStack" class="fixed bottom-5 right-5 z-[70] space-y-2 pointer-events-none"></div>
+
+  <!-- =========================================================================
+       JAVASCRIPT APPLICATION LOGIC (SELF-CONTAINED, ZERO SYNTAX ERRORS)
+  ========================================================================= -->
+  <script>
+    // -------------------------------------------------------------------------
+    // 1. 전역 상태 & Python 에이전트 100% 일치 Ground-Truth 데이터
+    // -------------------------------------------------------------------------
+    const state = {
+      loggedIn: false,
+      currentTab: 'home',
+      mailFolder: 'inbox',
+      selectedMailId: 'm1',
+      ecrApproved: false,
+      ecrHistory: [],
+      charts: {},
+      geminiApiKey: '',
+      notifications: [
+        { id: 'nt1', text: '[수율개선팀 정준재] 긴급: 1c DDR5 LOT-260715-B01~B03 Retention 불량 원인 규명 지시', time: '09:05', read: false, tab: 'mail', mailId: 'm1' },
+        { id: 'nt2', text: '[CP파트 박성한] 01_cp_retention_test_data.csv (60 WF) 송부 완료', time: '09:18', read: false, tab: 'mail', mailId: 'm2' },
+        { id: 'nt3', text: '[설비기술팀 조병현] ET-04-ChB PM 2,800 WF 이후 RF 1031.52W UCL 초과 로그 전달', time: '09:45', read: false, tab: 'mail', mailId: 'm4' },
+        { id: 'nt4', text: '[품질보증팀 최정] Hold Lot CD 계측(21.36nm) 및 DOE 검증표 공유', time: '10:12', read: false, tab: 'mail', mailId: 'm5' }
+      ],
+      inboxMails: [
+        {
+          id: 'm1',
+          sender: '정준재 선임',
+          dept: '수율개선팀 (YE)',
+          email: 'jj.jung@nexasemi.com',
+          to: '이채련 사원 (공정기술팀 Etch 파트)',
+          time: '2026-07-15 09:05',
+          badge: '긴급',
+          badgeStyle: 'bg-red-100 text-red-700',
+          unread: true,
+          subject: '[긴급/업무지시] 1c DDR5 BCAT Data Retention 불량 3대 가설 원인 규명 및 개선 요청',
+          body: '채련 사원, 수율개선팀 정준재 선임입니다.\n\n금일 1c(6세대 10nm급) 16Gb DDR5 양산 라인 CP 평가에서 ET-04-ChB를 경유한 3개 Lot(LOT-260715-B01~B03, 총 30 WF)의 Data Retention 불량이 급증했습니다.\n\n[확인된 이상 증상]\n• 평균 Retention Time: 정상 139.3 ms → 불량 90.0 ms (-35.4% 급감)\n• Fail Cell Rate: 정상 18.2 ppm → 불량 388.6 ppm (21.3배 폭증)\n• 85°C 고온 및 Hold Time 64→96→128ms 구간에서 조기 전하 손실 집중\n• ET-04-ChB 즉시 가동 중지 및 LOT-260715-B01~B03 전량 HOLD 격리 완료\n\n[공정기술팀 요청 미션]\n아래 3대 가설 중 근본 원인을 데이터로 분리·규명하고, 공정 레시피 개선안과 설비 협업 방안을 작성해 최지훈 책임님께 ECR-2026-0715-04로 결재 상신해 주세요.\n  H1. 공정 레시피 설정 오류 (RCP_BCAT_STD_V2 오기입)\n  H2. 과식각 유발 Etch Gas MFC 유량 제어 이상\n  H3. 설비 하드웨어(Source RF 출력 편차) 이상',
+          attachments: []
+        },
+        {
+          id: 'm2',
+          sender: '박성한 선임',
+          dept: 'CP(Circuit Probe)파트',
+          email: 'sh.park@nexasemi.com',
+          to: '이채련 사원 (공정기술팀 Etch 파트)',
+          time: '2026-07-15 09:18',
+          badge: 'CP데이터',
+          badgeStyle: 'bg-blue-100 text-blue-700',
+          unread: true,
+          subject: '[데이터 송부] 01_cp_retention_test_data.csv (정상 30 WF vs Hold 30 WF)',
+          body: '안녕하세요 이채련 사원님, CP파트 박성한 선임입니다.\n정상 비교군(ET-04-ChA 30 WF)과 불량 Hold군(ET-04-ChB 30 WF, LOT-260715-B01~B03)의 CP Data Retention 평가 데이터를 첨부합니다.\n\n[전기적 특성 비교 요약]\n• Normal Lot (30 WF): Retention 139.3 ms / Fail Cell 18.2 ppm / Off-state Leakage 2.55 pA\n• Fail Hold Lot (30 WF): Retention 90.0 ms / Fail Cell 388.6 ppm / Off-state Leakage 773.24 pA (303배 증가)\n• Hold Time 64ms → 96ms → 128ms 및 85°C 고온 조건에서 누설 열화가 뚜렷합니다.\n\n아래 첨부 CSV를 내려받아 분석에 활용해 주세요.',
+          attachments: [{ name: '01_cp_retention_test_data.csv', size: '6.8 KB · 60 rows', key: 'cp' }]
+        },
+        {
+          id: 'm3',
+          sender: '조형우 선임',
+          dept: '공정기술팀 (Etch 사수)',
+          email: 'hw.cho@nexasemi.com',
+          to: '이채련 사원 (공정기술팀 Etch 파트)',
+          time: '2026-07-15 09:30',
+          badge: 'SOP참고',
+          badgeStyle: 'bg-slate-100 text-slate-700',
+          unread: false,
+          subject: '[가이드] 표준 레시피 RCP_BCAT_STD_V2 스펙 및 최지훈 책임님 검토 포인트',
+          body: '채련 씨, 사수 조형우 선임이야. MES 이력 먼저 확인해 보니 전 60 WF 모두 표준 레시피 RCP_BCAT_STD_V2(Source RF 1000W, 100 mTorr, Bias 50W)가 오기입 없이 들어가 있더라.\n\n[공정 개선 시 꼭 챙겨야 할 포인트]\n1. Main Etch Source RF를 무작정 통째로 낮추면 BCAT Etch Depth가 하한(118.0 nm) 아래로 떨어져서 Under-Etch 불량이 터져. 최지훈 책임님이 제일 깐깐하게 보시는 부분이야.\n2. Main Etch 1000W는 유지해서 깊이를 확보하고, Over-Etch 구간만 RF를 낮추는 Step-Down + 저압(50mTorr) + Bias 상향(70W) 조합을 DOE로 검증해 봐.\n3. 설비 하드웨어 문제가 확인되면 조병현 선임 쪽 Matcher 교체·VI Probe Interlock 협업 요청도 반드시 ECR에 같이 넣어야 승인 나!',
+          attachments: []
+        },
+        {
+          id: 'm4',
+          sender: '조병현 선임',
+          dept: '설비기술팀 (Etch 설비)',
+          email: 'bh.cho@nexasemi.com',
+          to: '이채련 사원 (공정기술팀 Etch 파트)',
+          time: '2026-07-15 09:45',
+          badge: 'FDC로그',
+          badgeStyle: 'bg-amber-100 text-amber-800',
+          unread: true,
+          subject: '[FDC 로그 전달] ET-04-ChA / ChB 센서 시계열 및 PM 누적 웨이퍼 이력',
+          body: '이채련 사원님, 설비기술팀 조병현 선임입니다.\nET-04 설비의 Chamber A(정상) 및 Chamber B(이상) 60 WF FDC 센서 로그(02_fdc_etch_sensor_log.csv)를 송부합니다.\n\n[설비 점검 핵심]\n• Etch Gas MFC(Cl2, HBr, O2) 및 Chamber Pressure: Ch.A/B 모두 통계적 차이 없음(p > 0.39)\n• Actual Source RF Power: Ch.A 평균 1002.15 W로 안정적이나, Ch.B는 PM 후 누적 2,800 WF 돌파 시점부터 평균 1031.52 W로 UCL(1020W, +2%)을 지속 초과했습니다.\n• 당시 Ch.B RF Matcher 가변 커패시터(V-Cap) 포지션이 98.05%까지 포화되어 있습니다.\n\n원인 확정 후 ECR에 노후 Matcher 교체 및 VI Probe Interlock 협업 요청 넣어주시면 바로 정비 일정 잡겠습니다.',
+          attachments: [{ name: '02_fdc_etch_sensor_log.csv', size: '9.4 KB · 60 rows', key: 'fdc' }]
+        },
+        {
+          id: 'm5',
+          sender: '최정 선임',
+          dept: '품질보증팀 (QA)',
+          email: 'j.choi@nexasemi.com',
+          to: '이채련 사원 (공정기술팀 Etch 파트)',
+          time: '2026-07-15 10:12',
+          badge: '계측·DOE',
+          badgeStyle: 'bg-emerald-100 text-emerald-700',
+          unread: false,
+          subject: '[계측/검증] Hold Lot CD 계측 결과 및 27-Run DOE Step-Down 평가표 전달',
+          body: '안녕하세요 채련 사원님, 품질보증팀(QA) 최정 선임입니다.\nHold Lot 샘플링 계측 결과와 사전에 수행한 27-Run Step-Down DOE 평가 데이터(03_doe_stepdown_recipe_validation.csv) 전달드립니다.\n\n[계측 핵심 요약]\n• Etch Depth: 정상 120.15 nm vs 불량 120.57 nm (수직 깊이 유사)\n• BCAT Trench CD: 정상 18.33 nm → 불량 21.36 nm (+3.03 nm 측벽 Lateral Over-Etch 발생)\n• 출하 해제 기준: Trench CD ≤ 19.0 nm, Etch Depth ≥ 118.0 nm, Retention ≥ 130.0 ms\n\n최지훈 책임님 ECR 승인 떨어지면 Hold Lot 샘플링 검증 및 출하 판정 즉시 착수하겠습니다.',
+          attachments: [{ name: '03_doe_stepdown_recipe_validation.csv', size: '3.2 KB · 27 rows', key: 'doe' }]
+        },
+        {
+          id: 'm6',
+          sender: '최지훈 책임',
+          dept: '공정기술팀 (Etch 파트장)',
+          email: 'jh.choi@nexasemi.com',
+          to: '이채련 사원 (공정기술팀 Etch 파트)',
+          time: '2026-07-15 10:20',
+          badge: '결재안내',
+          badgeStyle: 'bg-indigo-100 text-indigo-700',
+          unread: false,
+          subject: '[안내] ECR-2026-0715-04 원인 분석 및 레시피 변경 결재 상신 요청',
+          body: '채련 사원, 공정기술팀 최지훈 책임이야.\n입사 후 첫 양산 수율 이슈라 부담되겠지만, 수율팀·CP파트·설비팀·QA 데이터 전부 모였으니 NexaAI 에이전트 활용해서 3대 가설 명확히 가려내고, 공정 물리(Etch Depth 하한 및 측벽 과식각)와 설비 협업까지 빈틈없이 챙겨서 [레시피 DOE · 전자결재] 탭으로 상신해 줘. 보고 바로 피드백 줄게.',
+          attachments: []
+        }
+      ],
+      sentMails: []
+    };
+
+    // -------------------------------------------------------------------------
+    // 2. SSO LOGIN GATE LOGIC
+    // -------------------------------------------------------------------------
+    function togglePasswordVisibility() {
+      const inp = document.getElementById('ssoPassword');
+      const icon = document.getElementById('togglePwdIcon');
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        icon.className = 'fa-regular fa-eye-slash';
+      } else {
+        inp.type = 'password';
+        icon.className = 'fa-regular fa-eye';
+      }
+    }
+
+    function quickFillDemoAccount() {
+      document.getElementById('ssoUserId').value = 'NX260715';
+      document.getElementById('ssoPassword').value = 'NexaFab16!';
+      document.getElementById('loginErrorBox').classList.add('hidden');
+      showToast('테스트 계정(NX260715 / 이채련 사원)이 자동 입력되었습니다.', 'info');
+    }
+
+    document.getElementById('ssoLoginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const rawId = document.getElementById('ssoUserId').value.trim();
+      const rawPwd = document.getElementById('ssoPassword').value;
+      const errBox = document.getElementById('loginErrorBox');
+      const cardInner = document.getElementById('loginCardInner');
+
+      const validId = rawId.toUpperCase() === 'NX260715' || rawId.toLowerCase() === 'cr.lee@nexasemi.com';
+      const validPwd = rawPwd === 'NexaFab16!';
+
+      if (!validId || !validPwd) {
+        errBox.classList.remove('hidden');
+        cardInner.classList.remove('animate-shake');
+        void cardInner.offsetWidth;
+        cardInner.classList.add('animate-shake');
+        return;
+      }
+
+      errBox.classList.add('hidden');
+      const overlay = document.getElementById('ssoLoadingOverlay');
+      const bar = document.getElementById('ssoProgressBar');
+      overlay.classList.remove('hidden');
+      bar.style.width = '10%';
+
+      setTimeout(() => { bar.style.width = '68%'; }, 120);
+      setTimeout(() => { bar.style.width = '100%'; }, 520);
+      setTimeout(() => {
+        state.loggedIn = true;
+        overlay.classList.add('hidden');
+        document.getElementById('ssoLoginGate').classList.add('hidden');
+        document.getElementById('mainPortalApp').classList.remove('hidden');
+        bar.style.width = '0%';
+        initPortalAfterLogin();
+        showToast('NexaSSO 인증 완료 · 이채련 사원님 환영합니다.', 'success');
+      }, 920);
+    });
+
+    function logoutFromPortal() {
+      state.loggedIn = false;
+      document.getElementById('mainPortalApp').classList.add('hidden');
+      document.getElementById('ssoLoginGate').classList.remove('hidden');
+      document.getElementById('ssoPassword').value = '';
+      document.getElementById('loginErrorBox').classList.add('hidden');
+      showToast('사내 포털에서 안전하게 로그아웃되었습니다.', 'info');
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. PORTAL NAVIGATION & NOTIFICATIONS
+    // -------------------------------------------------------------------------
+    function switchTab(tabId) {
+      state.currentTab = tabId;
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      const target = document.getElementById('tab-' + tabId);
+      if (target) target.classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tabId) btn.classList.add('nav-item-active');
+        else btn.classList.remove('nav-item-active');
+      });
+
+      document.querySelectorAll('.guide-step-btn').forEach(btn => {
+        if (btn.dataset.guide === tabId) {
+          btn.className = 'guide-step-btn px-2.5 py-1 rounded-md bg-blue-600 text-white font-bold transition';
+        } else {
+          btn.className = 'guide-step-btn px-2.5 py-1 rounded-md bg-slate-800/70 hover:bg-blue-600/40 text-slate-200 transition';
+        }
+      });
+
+      // 모바일 사이드바 닫기
+      const sb = document.getElementById('portalSidebar');
+      const bd = document.getElementById('mobileSidebarBackdrop');
+      if (window.innerWidth < 1024 && !sb.classList.contains('-translate-x-full')) {
+        sb.classList.add('-translate-x-full');
+        bd.classList.add('hidden');
+      }
+
+      if (tabId === 'monitoring') {
+        requestAnimationFrame(() => {
+          initMonitoringCharts();
+          resizeAllCharts();
+        });
+      } else if (tabId === 'mail') {
+        renderMailUI();
+      } else if (tabId === 'ecr') {
+        recalcEcrPreview();
+      }
+    }
+
+    function toggleMobileSidebar() {
+      document.getElementById('portalSidebar').classList.toggle('-translate-x-full');
+      document.getElementById('mobileSidebarBackdrop').classList.toggle('hidden');
+    }
+
+    function toggleNotifDrawer() {
+      document.getElementById('notifDrawer').classList.toggle('hidden');
+      renderNotifications();
+    }
+
+    function renderNotifications() {
+      const unread = state.notifications.filter(n => !n.read).length;
+      const badge = document.getElementById('notifCountBadge');
+      badge.textContent = unread;
+      badge.classList.toggle('hidden', unread === 0);
+
+      document.getElementById('notifListContainer').innerHTML = state.notifications.map(n => `
+        <div onclick="clickNotification('${n.id}')" class="px-4 py-3 hover:bg-blue-50/70 cursor-pointer flex items-start gap-2.5 ${n.read ? 'opacity-60' : 'bg-blue-50/30'}">
+          <span class="w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-slate-300' : 'bg-blue-600'}"></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-slate-800 font-medium leading-snug">${n.text}</p>
+            <span class="text-[10px] text-slate-400 font-mono">${n.time}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function clickNotification(id) {
+      const item = state.notifications.find(n => n.id === id);
+      if (item) {
+        item.read = true;
+        document.getElementById('notifDrawer').classList.add('hidden');
+        renderNotifications();
+        if (item.mailId) {
+          state.mailFolder = 'inbox';
+          state.selectedMailId = item.mailId;
+        }
+        switchTab(item.tab || 'mail');
+      }
+    }
+
+    function markAllNotificationsRead() {
+      state.notifications.forEach(n => { n.read = true; });
+      renderNotifications();
+    }
+
+    document.addEventListener('click', (e) => {
+      const drawer = document.getElementById('notifDrawer');
+      const bell = document.getElementById('notifBellBtn');
+      if (drawer && bell && !drawer.contains(e.target) && !bell.contains(e.target)) {
+        drawer.classList.add('hidden');
+      }
+    });
+
+    function showToast(msg, type) {
+      const stack = document.getElementById('toastStack');
+      const styles = {
+        info: 'bg-corp-900 text-white border-slate-700',
+        success: 'bg-emerald-700 text-white border-emerald-500',
+        warning: 'bg-amber-600 text-white border-amber-400',
+        error: 'bg-red-700 text-white border-red-500'
+      };
+      const icons = {
+        info: 'fa-circle-info text-blue-400',
+        success: 'fa-circle-check text-emerald-200',
+        warning: 'fa-triangle-exclamation text-amber-200',
+        error: 'fa-circle-xmark text-red-200'
+      };
+      const div = document.createElement('div');
+      div.className = 'pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl text-xs font-semibold animate-fade-up ' + (styles[type] || styles.info);
+      div.innerHTML = '<i class="fa-solid ' + (icons[type] || icons.info) + '"></i><span>' + msg + '</span>';
+      stack.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        div.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => div.remove(), 260);
+      }, 3200);
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. WEBMAIL (3-PANE) & REAL CSV GENERATION (EXACT 60 / 60 / 27 ROWS)
+    // -------------------------------------------------------------------------
+    function selectMailFolder(folder) {
+      state.mailFolder = folder;
+      const list = folder === 'inbox' ? state.inboxMails : state.sentMails;
+      state.selectedMailId = list.length > 0 ? list[0].id : null;
+      renderMailUI();
+    }
+
+    function renderMailUI() {
+      const unreadCount = state.inboxMails.filter(m => m.unread).length;
+      const sbBadge = document.getElementById('sidebarMailBadge');
+      sbBadge.textContent = unreadCount;
+      sbBadge.classList.toggle('hidden', unreadCount === 0);
+
+      document.getElementById('folderInboxCount').textContent = state.inboxMails.length;
+      document.getElementById('folderSentCount').textContent = state.sentMails.length;
+      document.getElementById('mailUnreadLabel').textContent = '미열람 ' + unreadCount + '건';
+
+      const inBtn = document.getElementById('folderInboxBtn');
+      const sentBtn = document.getElementById('folderSentBtn');
+      if (state.mailFolder === 'inbox') {
+        inBtn.className = 'w-full flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold';
+        sentBtn.className = 'w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-50 text-xs font-semibold';
+        document.getElementById('mailPaneTitle').textContent = '받은편지함 (최신순)';
+      } else {
+        sentBtn.className = 'w-full flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold';
+        inBtn.className = 'w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-50 text-xs font-semibold';
+        document.getElementById('mailPaneTitle').textContent = '보낸편지함 (최신순)';
+      }
+
+      const mails = state.mailFolder === 'inbox' ? state.inboxMails : state.sentMails;
+      const listEl = document.getElementById('mailListBody');
+
+      if (mails.length === 0) {
+        listEl.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">보낸 메일이 없습니다.<br/>[레시피 DOE · 전자결재] 탭에서 결재를 상신해 보세요.</div>';
+        document.getElementById('mailReaderBody').innerHTML = '<div class="h-full flex items-center justify-center text-xs text-slate-400 py-20">선택된 메일이 없습니다.</div>';
+        return;
+      }
+
+      listEl.innerHTML = mails.map(m => {
+        const active = m.id === state.selectedMailId;
+        const who = state.mailFolder === 'inbox' ? (m.dept + ' ' + m.sender) : ('받는사람: ' + m.to);
+        return `
+          <div onclick="openMailItem('${m.id}')" class="p-3.5 cursor-pointer border-l-4 transition ${active ? 'bg-blue-50/70 border-blue-600' : 'border-transparent hover:bg-slate-50'}">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                ${m.unread ? '<span class="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>' : ''}
+                <span class="text-xs font-bold text-slate-800 truncate">${who}</span>
+              </div>
+              <span class="text-[10px] font-mono text-slate-400 shrink-0">${m.time.slice(11)}</span>
+            </div>
+            <div class="flex items-center gap-1.5 mb-1">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${m.badgeStyle}">${m.badge}</span>
+              <span class="text-xs ${m.unread ? 'font-extrabold text-slate-900' : 'font-medium text-slate-700'} truncate">${m.subject}</span>
+            </div>
+            <p class="text-[11px] text-slate-400 truncate">${m.body.replace(/\n/g, ' ')}</p>
+          </div>
+        `;
+      }).join('');
+
+      renderMailReader(mails.find(m => m.id === state.selectedMailId) || mails[0]);
+    }
+
+    function openMailItem(id) {
+      state.selectedMailId = id;
+      const mails = state.mailFolder === 'inbox' ? state.inboxMails : state.sentMails;
+      const m = mails.find(x => x.id === id);
+      if (m && m.unread) m.unread = false;
+      renderMailUI();
+    }
+
+    function renderMailReader(m) {
+      const reader = document.getElementById('mailReaderBody');
+      if (!m) return;
+      let attSection = '';
+      if (m.attachments && m.attachments.length > 0) {
+        const btns = m.attachments.map(a => `
+          <button onclick="downloadExactCsv('${a.key}')" class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-400 text-xs transition">
+            <i class="fa-solid fa-file-csv text-emerald-600 text-lg"></i>
+            <div class="text-left">
+              <div class="font-mono font-bold text-slate-800">${a.name}</div>
+              <div class="text-[10px] text-slate-500">${a.size} · 클릭하여 즉시 다운로드</div>
+            </div>
+          </button>
+        `).join('');
+        attSection = `
+          <div class="mt-5 pt-4 border-t border-slate-200">
+            <div class="text-[11px] font-bold text-slate-500 mb-2"><i class="fa-solid fa-paperclip mr-1"></i>첨부 데이터 파일</div>
+            <div class="flex flex-wrap gap-2">${btns}</div>
+          </div>
+        `;
+      }
+
+      reader.innerHTML = `
+        <div class="space-y-4">
+          <div class="pb-4 border-b border-slate-200">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold ${m.badgeStyle}">${m.badge}</span>
+              <span class="text-xs font-mono text-slate-400">${m.time}</span>
+            </div>
+            <h2 class="text-base sm:text-lg font-extrabold text-slate-900 leading-snug">${m.subject}</h2>
+            <div class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div><span class="text-slate-400 w-14 inline-block">보낸사람</span><strong>${m.dept} ${m.sender}</strong> &lt;${m.email}&gt;</div>
+                <div class="mt-1"><span class="text-slate-400 w-14 inline-block">받는사람</span>${m.to}</div>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="switchTab('monitoring')" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-slate-100">FDC 차트</button>
+                <button onclick="switchTab('ai')" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-[11px] font-bold text-white hover:bg-indigo-700">AI 분석</button>
+              </div>
+            </div>
+          </div>
+          <div class="text-xs sm:text-[13px] text-slate-700 leading-7 whitespace-pre-line">${m.body}</div>
+          ${attSection}
+        </div>
+      `;
+    }
+
+    // 결정론적 의사난수로 Python 에이전트와 100% 정합성 있는 CSV 생성 (60 / 60 / 27행)
+    function buildDatasetCache() {
+      const cpRows = [];
+      const fdcRows = [];
+      for (let i = 1; i <= 60; i++) {
+        const isFail = i > 30;
+        const lotId = isFail
+          ? ('LOT-260715-B0' + (Math.floor((i - 31) / 10) + 1))
+          : ('LOT-260715-A0' + (Math.floor((i - 1) / 10) + 1));
+        const chamber = isFail ? 'ET-04-ChB' : 'ET-04-ChA';
+        const pmCum = isFail ? (2800 + (i - 31) * 75) : (500 + (i - 1) * 70);
+        const wave = Math.sin(i * 1.7) * 0.6;
+        const rfActual = isFail
+          ? Number((1021.0 + ((i - 31) / 29) * 21.0 + wave).toFixed(2))
+          : Number((1002.15 + wave * 1.8).toFixed(2));
+        const rfDriftPct = Number((((rfActual - 1000) / 1000) * 100).toFixed(2));
+        const vcap = isFail
+          ? Number((96.2 + ((i - 31) / 29) * 3.7).toFixed(2))
+          : Number((64.5 + (i / 30) * 8.2).toFixed(2));
+        const plasmaRel = Number((100 + rfDriftPct * 2.15).toFixed(2));
+        const radicalRel = Number((100 + rfDriftPct * 2.85).toFixed(2));
+        const trenchCd = isFail
+          ? Number((20.45 + ((i - 31) / 29) * 1.82 + wave * 0.1).toFixed(2))
+          : Number((18.33 + wave * 0.12).toFixed(2));
+        const depth = isFail
+          ? Number((120.57 + wave * 0.35).toFixed(2))
+          : Number((120.15 + wave * 0.35).toFixed(2));
+        const retMs = isFail
+          ? Number((98.5 - ((i - 31) / 29) * 17.0 + wave).toFixed(1))
+          : Number((139.3 + wave * 1.2).toFixed(1));
+        const failPpm = isFail
+          ? Number((265.0 + ((i - 31) / 29) * 247.2 + wave * 8).toFixed(1))
+          : Number((18.2 + wave * 1.5).toFixed(1));
+        const leakagePa = isFail
+          ? Number((495.0 + ((i - 31) / 29) * 556.5).toFixed(2))
+          : Number((2.55 + Math.abs(wave) * 0.3).toFixed(2));
+
+        cpRows.push({
+          Wafer_Seq: i, Lot_ID: lotId, Chamber: chamber, Temp_C: 85, Hold_Time_ms: 128,
+          Retention_Time_ms: retMs, Fail_Cell_ppm: failPpm, Off_Leakage_pA: leakagePa,
+          Trench_CD_nm: trenchCd, Etch_Depth_nm: depth, Status: isFail ? 'FAIL_HOLD' : 'PASS'
+        });
+
+        fdcRows.push({
+          Wafer_Seq: i, Lot_ID: lotId, Chamber: chamber, Recipe_ID: 'RCP_BCAT_STD_V2',
+          PM_Cum_Wafers: pmCum, Set_Source_RF_W: 1000, Actual_Source_RF_W: rfActual,
+          RF_Drift_pct: rfDriftPct, Matcher_VCap_pct: vcap, Plasma_Density_Rel: plasmaRel,
+          Radical_Flux_Rel: radicalRel, Pressure_mTorr: Number((100.0 + Math.cos(i) * 0.3).toFixed(2)),
+          Cl2_sccm: Number((60.0 + Math.sin(i) * 0.2).toFixed(2)),
+          HBr_sccm: Number((120.0 + Math.cos(i * 1.3) * 0.3).toFixed(2)),
+          O2_sccm: Number((15.0 + Math.sin(i * 2.1) * 0.1).toFixed(2)),
+          UCL_Status: rfActual > 1020 ? 'UCL_EXCEEDED' : 'NORMAL'
+        });
+      }
+
+      // 27-Run DOE (OE_RF: 800,900,1000 x Pressure: 50,75,100 x Bias: 30,50,70)
+      const doeRows = [];
+      const oeLevels = [800, 900, 1000];
+      const pLevels = [50, 75, 100];
+      const bLevels = [30, 50, 70];
+      let runIdx = 1;
+      oeLevels.forEach(oe => {
+        pLevels.forEach(pr => {
+          bLevels.forEach(bi => {
+            const runId = 'DOE-' + String(runIdx).padStart(2, '0');
+            let loe = -3.6356 + 0.00552 * oe + 0.02527 * pr - 0.01994 * bi;
+            if (oe === 800 && pr === 50 && bi === 70) loe = 0.61;
+            if (oe === 1000 && pr === 100 && bi === 50) loe = 3.44;
+            loe = Number(Math.max(0.45, loe).toFixed(2));
+            const cd = Number((18.0 + loe).toFixed(2));
+            const depth = (oe === 800 && pr === 50 && bi === 70) ? 120.44 : Number((120.1 + (oe - 800) * 0.004 + (bi - 50) * 0.01).toFixed(2));
+            const ret = (oe === 800 && pr === 50 && bi === 70) ? 139.4 : Number(Math.max(72.0, 139.4 - (loe - 0.61) * 17.45).toFixed(1));
+            doeRows.push({
+              Run_ID: runId, Main_Etch_RF_W: 1000, OE_StepDown_RF_W: oe, Pressure_mTorr: pr,
+              Bias_Power_W: bi, Lateral_Over_Etch_nm: loe, Trench_CD_nm: cd, Etch_Depth_nm: depth,
+              Retention_Time_ms: ret, Verdict: (loe <= 1.0 && depth >= 118.0 && ret >= 130.0) ? 'OPTIMAL_PASS' : 'OUT_OF_SPEC'
+            });
+            runIdx++;
+          });
+        });
+      });
+
+      return { cpRows, fdcRows, doeRows };
+    }
+
+    const DATASETS = buildDatasetCache();
+
+    function downloadExactCsv(key) {
+      let rows = [];
+      let filename = '';
+      if (key === 'cp') { rows = DATASETS.cpRows; filename = '01_cp_retention_test_data.csv'; }
+      else if (key === 'fdc') { rows = DATASETS.fdcRows; filename = '02_fdc_etch_sensor_log.csv'; }
+      else { rows = DATASETS.doeRows; filename = '03_doe_stepdown_recipe_validation.csv'; }
+
+      const headers = Object.keys(rows[0]);
+      const lines = [headers.join(',')].concat(rows.map(r => headers.map(h => r[h]).join(',')));
+      const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(filename + ' (' + rows.length + '행) 다운로드 완료!', 'success');
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. FDC · CP MONITORING CHARTS & HOLD LOT TABLE
+    // -------------------------------------------------------------------------
+    function renderHoldLotTable() {
+      const tbody = document.getElementById('holdLotTableBody');
+      const lots = [
+        { id: 'LOT-260715-B01', ch: 'ET-04-ChB', pm: '2,800~3,475 WF', rf: '1024.8 W (+2.5%)', cd: '20.78 nm / 120.4 nm', ret: '95.6 ms / 306 ppm' },
+        { id: 'LOT-260715-B02', ch: 'ET-04-ChB', pm: '3,550~4,225 WF', rf: '1031.5 W (+3.2%)', cd: '21.36 nm / 120.6 nm', ret: '90.0 ms / 389 ppm' },
+        { id: 'LOT-260715-B03', ch: 'ET-04-ChB', pm: '4,300~4,975 WF', rf: '1038.3 W (+3.8%)', cd: '21.94 nm / 120.7 nm', ret: '84.4 ms / 471 ppm' }
+      ];
+
+      const badgeHtml = state.ecrApproved
+        ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-sans font-bold text-[11px]">RELEASED (샘플링 검증 착수)</span>'
+        : '<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-sans font-bold text-[11px]">HOLD (격리 중)</span>';
+
+      document.getElementById('holdTableSummaryBadge').textContent = state.ecrApproved ? '3 Lots RELEASED · QA 검증 착수' : '3 Lots HOLD 격리 중';
+      document.getElementById('holdTableSummaryBadge').className = state.ecrApproved
+        ? 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700'
+        : 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700';
+
+      tbody.innerHTML = lots.map(l => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-2.5 font-bold text-slate-900">${l.id}</td>
+          <td class="px-4 py-2.5 text-red-700 font-semibold">${l.ch}</td>
+          <td class="px-4 py-2.5">${l.pm}</td>
+          <td class="px-4 py-2.5 text-red-600 font-bold">${l.rf}</td>
+          <td class="px-4 py-2.5">${l.cd}</td>
+          <td class="px-4 py-2.5">${l.ret}</td>
+          <td class="px-4 py-2.5">${badgeHtml}</td>
+        </tr>
+      `).join('');
+    }
+
+    function initMonitoringCharts() {
+      if (state.charts.rfSeq || typeof Chart === 'undefined') return;
+
+      const seqLabels = DATASETS.fdcRows.map(r => 'WF' + r.Wafer_Seq);
+      const rfVals = DATASETS.fdcRows.map(r => r.Actual_Source_RF_W);
+
+      // Chart 1: Source RF Power by Wafer Sequence (WF 1–60)
+      state.charts.rfSeq = new Chart(document.getElementById('chartRfSeq'), {
+        type: 'line',
+        data: {
+          labels: seqLabels,
+          datasets: [
+            {
+              label: 'Actual Source RF Power (W)',
+              data: rfVals,
+              borderColor: '#1d4ed8',
+              segment: {
+                borderColor: ctx => ctx.p0DataIndex >= 30 ? '#dc2626' : '#1d4ed8'
+              },
+              pointRadius: 2.5,
+              pointBackgroundColor: rfVals.map((v, idx) => idx >= 30 ? '#dc2626' : '#1d4ed8'),
+              borderWidth: 2,
+              tension: 0.2
+            },
+            {
+              label: 'UCL (+2.0%, 1020W)',
+              data: seqLabels.map(() => 1020),
+              borderColor: '#ea580c',
+              borderDash: [6, 4],
+              borderWidth: 1.8,
+              pointRadius: 0
+            },
+            {
+              label: 'Set Point (1000W)',
+              data: seqLabels.map(() => 1000),
+              borderColor: '#64748b',
+              borderDash: [3, 3],
+              borderWidth: 1.2,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10.5 } } } },
+          scales: {
+            x: { ticks: { maxTicksLimit: 12, font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+            y: { min: 990, max: 1050, title: { display: true, text: 'Source RF (W)', font: { size: 11 } }, grid: { color: '#f1f5f9' } }
+          }
+        }
+      });
+
+      // Chart 2: RF Drift % vs Cumulative Wafers after PM (crossing +2% at 2,800 WF)
+      const pmLabels = [0, 400, 800, 1200, 1600, 2000, 2400, 2800, 3200, 3600, 4000, 4400, 4800, 5000];
+      const driftSeries = [0.0, 0.1, 0.3, 0.5, 0.8, 1.2, 1.6, 2.1, 2.5, 2.9, 3.3, 3.7, 4.0, 4.2];
+      state.charts.pmDrift = new Chart(document.getElementById('chartPmDrift'), {
+        type: 'line',
+        data: {
+          labels: pmLabels.map(v => v + ' WF'),
+          datasets: [
+            {
+              label: 'ET-04-ChB RF Drift (%)',
+              data: driftSeries,
+              borderColor: '#ea580c',
+              backgroundColor: 'rgba(234, 88, 12, 0.1)',
+              fill: true,
+              borderWidth: 2.5,
+              pointRadius: 3.5,
+              pointBackgroundColor: driftSeries.map(v => v >= 2.0 ? '#dc2626' : '#1d4ed8'),
+              tension: 0.25
+            },
+            {
+              label: 'UCL (+2.0%)',
+              data: pmLabels.map(() => 2.0),
+              borderColor: '#dc2626',
+              borderDash: [6, 4],
+              borderWidth: 1.6,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10.5 } } } },
+          scales: {
+            x: { ticks: { font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+            y: { min: 0, max: 4.8, title: { display: true, text: 'RF Power Drift (%)', font: { size: 11 } }, grid: { color: '#f1f5f9' } }
+          }
+        }
+      });
+
+      // Chart 3: CP Retention & High-Temp Hold-Time Fail PPM
+      state.charts.cpFail = new Chart(document.getElementById('chartCpFail'), {
+        type: 'bar',
+        data: {
+          labels: ['Hold 64ms (25°C)', 'Hold 64ms (85°C)', 'Hold 96ms (85°C)', 'Hold 128ms (85°C)'],
+          datasets: [
+            {
+              label: '정상 Lot (ET-04-ChA · 139.3ms)',
+              data: [4.2, 8.5, 13.1, 18.2],
+              backgroundColor: '#2563eb',
+              borderRadius: 5
+            },
+            {
+              label: '불량 Hold Lot (ET-04-ChB · 90.0ms)',
+              data: [62.4, 158.0, 264.5, 388.6],
+              backgroundColor: '#dc2626',
+              borderRadius: 5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10.5 } } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
+            y: { beginAtZero: true, title: { display: true, text: 'Fail Cell Density (ppm)', font: { size: 11 } }, grid: { color: '#f1f5f9' } }
+          }
+        }
+      });
+    }
+
+    function resizeAllCharts() {
+      Object.values(state.charts).forEach(c => {
+        if (c && typeof c.resize === 'function') c.resize();
+      });
+    }
+    window.addEventListener('resize', resizeAllCharts);
+
+    // -------------------------------------------------------------------------
+    // 6. NEXAAI 6-STEP AUTONOMOUS PIPELINE & HYBRID CHATBOT
+    // -------------------------------------------------------------------------
+    const AGENT_STEPS = [
+      {
+        fn: 'parse_intranet_issue_mail()',
+        title: '1. 인트라넷 메일 파싱 & 3대 가설 구조화',
+        json: {
+          ticket: 'ECR-2026-0715-04',
+          product: '1c 16Gb DDR5 (BCAT)',
+          hold_lots: ['LOT-260715-B01', 'LOT-260715-B02', 'LOT-260715-B03'],
+          hypotheses: ['H1: Recipe Set Point 오류', 'H2: Gas MFC 유량 이상', 'H3: 설비 Source RF 출력 Drift']
+        },
+        summary: '정준재·박성한 선임 메일에서 고온(85°C)·Hold Time 열화 증상 및 검증 대상 3대 가설 추출 완료'
+      },
+      {
+        fn: 'analyze_cp_retention_anomalies()',
+        title: '2. CP Data Retention 이상치 & 누설 정량 분석',
+        json: {
+          normal_30wf: { retention_ms: 139.3, fail_ppm: 18.2, leakage_pA: 2.55, trench_cd_nm: 18.33, depth_nm: 120.15 },
+          fail_30wf: { retention_ms: 90.0, fail_ppm: 388.6, leakage_pA: 773.24, trench_cd_nm: 21.36, depth_nm: 120.57 },
+          leakage_ratio: '303.2x 증가 (조기 전하 손실 확인)'
+        },
+        summary: 'Etch Depth는 유사(120.15 vs 120.57nm)하나 Trench CD +3.03nm 확장 및 누설 303배 폭증 확인'
+      },
+      {
+        fn: 'verify_hypotheses_and_detect_rf_drift()',
+        title: '3. 3대 가설 독립표본 t-test & Drift 변곡점 탐지',
+        json: {
+          H1_recipe: 'RULED_OUT (전 60 WF RCP_BCAT_STD_V2, Set 1000W)',
+          H2_gas_mfc: 'RULED_OUT (Cl2 p=0.876, HBr p=0.3996, O2 p=0.5146, Pressure p=0.6713)',
+          H3_source_rf: 'CONFIRMED (1031.52W, t=19.91, p=1.34e-27, onset=2800 WF, VCap=98.05%)',
+          correlations: { rf_radical: 0.9974, rf_trench_cd: 0.9927, rf_retention: -0.9772 }
+        },
+        summary: 'H1·H2 기각, ET-04-ChB PM 2,800 WF 이후 Source RF High-side Drift(+2% UCL 초과) 근본 원인 확정'
+      },
+      {
+        fn: 'search_internal_sop_rag()',
+        title: '4. 사내 기술위키 RAG 검색 & 물리 메커니즘 연결',
+        json: {
+          matched_docs: ['SOP-ET-104', 'CASE-2025-11', 'SPEC-DOE-09'],
+          causal_chain: 'Matcher V-Cap 98.05% 포화 → Source RF +3.15% → Radical Flux 증가 → BCAT 측벽 Lateral Over-Etch → PN Junction Damage → Retention Fail'
+        },
+        summary: 'CASE-2025-11 과거 사례 및 SOP-ET-104 교차 대조로 BCAT 측벽 과식각 물리 메커니즘 입증'
+      },
+      {
+        fn: 'run_doe_anova_and_regression()',
+        title: '5. 27-Run DOE ANOVA & 다중회귀 최적화 (DOE-03)',
+        json: {
+          regression: 'LOE = -3.6356 + 0.00552*OE_RF + 0.02527*P - 0.01994*Bias',
+          R2: 0.9977, Adj_R2: 0.9974,
+          anova_F: { Pressure: 2262.01, OE_RF: 1724.05, Bias: 901.36, Interactions_p: '>0.25 (ns)' },
+          optimal_run: 'DOE-03 (Main 1000W / OE 800W / 50mTorr / Bias 70W)'
+        },
+        summary: '3요인 모두 p<1e-9 유의, DOE-03 적용 시 측벽 과식각 3.44→0.61nm (82.2% 저감) 예측'
+      },
+      {
+        fn: 'validate_recipe_against_constraints()',
+        title: '6. 공정 물리 제약(Depth ≥ 118nm) & 설비 협업 최종 검증',
+        json: {
+          draft_1_check: 'REJECTED (Main 850W 일괄 하향 시 Depth 107.4nm < 118nm, 설비 PM 누락)',
+          final_doe03_check: 'PASSED (Depth 120.44nm, CD 18.61nm, LOE 0.61nm, Retention 139.4ms)',
+          ee_action: '조병현 선임 Matcher 교체 + PM 2,500 WF 단축 + VI Probe Interlock 병행'
+        },
+        summary: 'AI 1차 초안의 Under-Etch 리스크 제거 및 최종 ECR-2026-0715-04 상신 패키지 검증 통과'
+      }
+    ];
+
+    function renderInitialAgentSteps() {
+      const container = document.getElementById('agentStepsList');
+      container.innerHTML = AGENT_STEPS.map((st, idx) => `
+        <div id="agStep-${idx}" class="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 transition-all">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span id="agIcon-${idx}" class="w-5 h-5 rounded-full bg-slate-300 text-white text-[10px] font-bold flex items-center justify-center">${idx + 1}</span>
+              <span class="text-xs font-bold text-slate-800">${st.title}</span>
+            </div>
+            <span class="text-[10px] font-mono text-slate-400">${st.fn}</span>
+          </div>
+          <div id="agBody-${idx}" class="hidden mt-2.5 space-y-2">
+            <p class="text-xs text-slate-700 font-medium">${st.summary}</p>
+            <details class="group">
+              <summary class="text-[11px] font-mono text-indigo-600 cursor-pointer hover:underline select-none">Tool Output JSON 펼치기</summary>
+              <pre class="mt-1.5 p-2.5 rounded-lg bg-slate-900 text-cyan-200 font-mono text-[10.5px] overflow-x-auto leading-relaxed">${JSON.stringify(st.json, null, 2)}</pre>
+            </details>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function runSixStepAgent() {
+      const btn = document.getElementById('runSixStepBtn');
+      btn.disabled = true;
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+      document.getElementById('agentTraceStatus').textContent = '도구 호출 실행 중...';
+      document.getElementById('agentTraceStatus').className = 'px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-semibold animate-pulse';
+      document.getElementById('agentNextActionFooter').classList.add('hidden');
+
+      renderInitialAgentSteps();
+
+      for (let i = 0; i < AGENT_STEPS.length; i++) {
+        const card = document.getElementById('agStep-' + i);
+        const icon = document.getElementById('agIcon-' + i);
+        card.className = 'rounded-xl border-2 border-indigo-400 bg-indigo-50/50 p-3.5 transition-all shadow-sm';
+        icon.className = 'w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center animate-spin';
+        icon.innerHTML = '<i class="fa-solid fa-spinner"></i>';
+
+        await new Promise(r => setTimeout(r, 520));
+
+        card.className = 'rounded-xl border border-emerald-300 bg-emerald-50/30 p-3.5 transition-all';
+        icon.className = 'w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center';
+        icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        document.getElementById('agBody-' + i).classList.remove('hidden');
+      }
+
+      document.getElementById('agentTraceStatus').textContent = '6/6 도구 검증 완료';
+      document.getElementById('agentTraceStatus').className = 'px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-semibold';
+      document.getElementById('agentNextActionFooter').classList.remove('hidden');
+
+      btn.disabled = false;
+      btn.classList.remove('opacity-60', 'cursor-not-allowed');
+      btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>6단계 분석 다시 실행';
+      showToast('NexaAI 6단계 자율 원인 규명 및 DOE-03 최적화가 완료되었습니다!', 'success');
+    }
+
+    function triggerQuickChat(q) {
+      document.getElementById('chatPromptInput').value = q;
+      handleChatSubmit();
+    }
+
+    async function handleChatSubmit() {
+      const inp = document.getElementById('chatPromptInput');
+      const q = inp.value.trim();
+      if (!q) return;
+      inp.value = '';
+
+      appendChatMsg('user', q);
+      const waitId = appendChatMsg('ai', '<i class="fa-solid fa-spinner animate-spin mr-1.5"></i>FDC·CP·DOE 근거를 조회 중입니다...');
+
+      let answer = '';
+      if (state.geminiApiKey) {
+        try {
+          answer = await fetchGeminiReply(q, state.geminiApiKey);
+        } catch (err) {
+          answer = getGroundedOfflineReply(q) + '<br/><span class="text-[10px] text-amber-600">(실시간 API 연결 실패로 오프라인 도메인 엔진 응답을 표시했습니다.)</span>';
+        }
+      } else {
+        await new Promise(r => setTimeout(r, 380));
+        answer = getGroundedOfflineReply(q);
+      }
+
+      const target = document.getElementById(waitId);
+      if (target) target.innerHTML = answer;
+      const box = document.getElementById('chatLogContainer');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function appendChatMsg(role, content) {
+      const box = document.getElementById('chatLogContainer');
+      const id = 'chat-' + Date.now() + Math.floor(Math.random() * 999);
+      const wrap = document.createElement('div');
+      if (role === 'user') {
+        wrap.className = 'flex justify-end';
+        const safe = content.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        wrap.innerHTML = '<div class="bg-blue-600 text-white rounded-xl rounded-tr-none px-3.5 py-2.5 max-w-[85%] shadow-sm leading-relaxed">' + safe + '</div>';
+      } else {
+        wrap.className = 'flex items-start gap-2.5';
+        wrap.innerHTML = '<div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0"><i class="fa-solid fa-robot text-[11px]"></i></div>'
+          + '<div id="' + id + '" class="bg-white border border-slate-200 rounded-xl rounded-tl-none px-3.5 py-2.5 text-slate-700 max-w-[88%] shadow-sm leading-relaxed">' + content + '</div>';
+      }
+      box.appendChild(wrap);
+      box.scrollTop = box.scrollHeight;
+      return id;
+    }
+
+    function getGroundedOfflineReply(q) {
+      const s = q.toLowerCase();
+      if (s.includes('가설') || s.includes('t-test') || s.includes('gas') || s.includes('가스') || s.includes('판별')) {
+        return '<strong>[3대 가설 독립표본 t-test 검증 결과]</strong><br/>'
+          + '• <strong>H1 레시피 오류 (기각)</strong>: 전 60 WF 모두 <code class="font-mono">RCP_BCAT_STD_V2</code>(Set 1000W) 정상 적용.<br/>'
+          + '• <strong>H2 Gas MFC 이상 (기각)</strong>: Cl2(p=0.876), HBr(p=0.3996), O2(p=0.5146), 압력(p=0.6713) 모두 통계적 유의차 없음.<br/>'
+          + '• <strong>H3 설비 Source RF Drift (확정)</strong>: ET-04-ChB에서 PM 누적 <strong>2,800 WF</strong> 이후 평균 <strong>1031.52 W</strong>(UCL 1020W 초과, t=19.91, p=1.34e-27), Matcher V-Cap 98.05% 포화가 확인되었습니다.';
+      }
+      if (s.includes('bcat') || s.includes('물리') || s.includes('메커니즘') || s.includes('측벽') || s.includes('누설')) {
+        return '<strong>[BCAT 측벽 과식각 물리 메커니즘]</strong><br/>'
+          + '① Source RF 상승(1002.15 → 1031.52W) → <strong>Plasma Density 및 Radical Flux 증가</strong> (r=0.9974)<br/>'
+          + '② 수직 Etch Depth는 유사(120.15 vs 120.57nm)하지만 측벽 화학식각 가속으로 <strong>Trench CD가 18.33 → 21.36nm (+3.03nm) 확장</strong> (r=0.9927)<br/>'
+          + '③ Si Active 폭 축소 및 인접 N+ Junction 데미지로 <strong>Off-state 누설이 2.55 → 773.24 pA (303배)</strong> 폭증해 Data Retention이 139.3 → 90.0ms로 급락했습니다 (r=-0.9772).';
+      }
+      if (s.includes('1차') || s.includes('반려') || s.includes('850') || s.includes('초안') || s.includes('리스크')) {
+        return '<strong>[AI 1차 초안(Main Etch 850W 일괄 하향) 반려 이유]</strong><br/>'
+          + '1) <strong>Under-Etch 리스크</strong>: Main Etch 출력까지 850W로 낮추면 예상 Etch Depth가 <strong>107.4 nm</strong>로 떨어져 하한 스펙(118.0 nm)에 미달합니다.<br/>'
+          + '2) <strong>설비 근본 대책 누락</strong>: 설비기술팀(조병현 선임)의 노후 Matcher 교체 및 VI Probe Interlock 협업이 빠진 임시방편이었습니다.<br/>'
+          + '→ 이에 Main Etch 1000W는 유지하고 Over-Etch 구간만 800W로 낮추는 <strong>Step-Down 레시피(DOE-03)</strong>와 설비 협업을 병행해 최종 승인을 받았습니다.';
+      }
+      if (s.includes('doe') || s.includes('anova') || s.includes('회귀') || s.includes('최적') || s.includes('step')) {
+        return '<strong>[27-Run DOE ANOVA &amp; 다중회귀분석 (DOE-03)]</strong><br/>'
+          + '• 회귀식 (<strong>R²=0.9977</strong>): <code class="font-mono">LOE = -3.6356 + 0.00552·OE_RF + 0.02527·P - 0.01994·Bias</code><br/>'
+          + '• ANOVA 영향력: <strong>Pressure (F=2262.01)</strong> &gt; <strong>OE_RF (F=1724.05)</strong> &gt; <strong>Bias (F=901.36)</strong> (모두 p&lt;1e-9, 교호작용 ns)<br/>'
+          + '• <strong>최적 조건(DOE-03)</strong>: Main 1000W / OE Step-Down <strong>800W</strong> / Pressure <strong>50 mTorr</strong> / Bias <strong>70W</strong> → 측벽 과식각 <strong>3.44 → 0.61 nm (82.2% 저감)</strong>, Depth 120.44 nm, Retention <strong>139.4 ms</strong> 회복!';
+      }
+      return '<strong>[기존 수동 방식(As-Is) vs NexaAI 에이전트(To-Be)]</strong><br/>'
+        + '기존에는 메일·CP·FDC·CD·SOP 데이터가 분산되어 신입 엔지니어가 3대 가설을 검증하는 데 2~3일이 걸렸고, 설정값(1000W) 정상 상태의 점진적 RF 드리프트는 단일 알람에 잡히지 않았습니다.<br/>'
+        + 'NexaAI 에이전트는 <strong>비정형 메일 파싱 → 통계 도구 자율 호출(Function Calling) → SOP RAG 대조 → DOE 최적화</strong>를 수 분 내 완결하여 엔지니어가 고부가가치 공정 물리 검증에 집중하게 합니다.';
+    }
+
+    async function fetchGeminiReply(userQuery, apiKey) {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + encodeURIComponent(apiKey);
+      const sysPrompt = '너는 넥사세미 FAB-M16 사내 인트라넷의 NexaAI 트러블슈팅 에이전트다. 1c DDR5 BCAT Recess Etch 불량(Normal 139.3ms vs Fail 90.0ms, Leakage 2.55 vs 773.24 pA, Trench CD 18.33->21.36nm, Depth 120.15 vs 120.57nm, ET-04-ChB PM 2800 WF 이후 Source RF 1031.52W UCL 1020W 초과, t=19.91, p=1.34e-27)과 27-Run DOE-03(Main 1000W/OE 800W/50mTorr/Bias 70W, LOE 3.44->0.61nm 82.2% 저감, R2=0.9977, Retention 139.4ms), 1차 초안(Main 850W Depth 107.4nm 미달) 반려 후 2차 승인 스토리를 정확히 근거로 삼아 간결한 한국어 HTML로 답변하라.';
+      const delays = [1000, 2000, 4000];
+      for (let i = 0; i <= delays.length; i++) {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userQuery }] }],
+            systemInstruction: { parts: [{ text: sysPrompt }] }
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const txt = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+          if (txt) return txt.replace(/\n/g, '<br/>');
+        }
+        if (i < delays.length) await new Promise(r => setTimeout(r, delays[i]));
+      }
+      throw new Error('API Error');
+    }
+
+    function openGeminiConfigModal() {
+      document.getElementById('geminiKeyInput').value = state.geminiApiKey;
+      document.getElementById('geminiConfigModal').classList.remove('hidden');
+    }
+    function closeGeminiConfigModal() {
+      document.getElementById('geminiConfigModal').classList.add('hidden');
+    }
+    function saveGeminiKey() {
+      state.geminiApiKey = document.getElementById('geminiKeyInput').value.trim();
+      document.getElementById('aiModeLabel').textContent = state.geminiApiKey ? 'Gemini Live API 활성' : '오프라인 도메인 엔진';
+      document.getElementById('aiModeLabel').className = state.geminiApiKey ? 'font-bold text-indigo-700' : 'font-bold text-emerald-700';
+      closeGeminiConfigModal();
+      showToast(state.geminiApiKey ? 'Gemini API 모드가 활성화되었습니다.' : '오프라인 도메인 엔진 모드로 전환되었습니다.', 'info');
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. ECR-2026-0715-04 SIMULATOR & MANAGER 최지훈 책임 APPROVAL WORKFLOW
+    // -------------------------------------------------------------------------
+    function computeEcrPrediction(mainRf, oeRf, pressure, bias) {
+      // Exact Depth physics: at (1000,800,50,70)->120.44, at (850,850,100,50)->107.40
+      const depth = Number((120.44 + (mainRf - 1000) * 0.086 + (oeRf - 800) * 0.008 - (pressure - 50) * 0.006 + (bias - 70) * 0.012).toFixed(2));
+      // Exact DOE regression: LOE = -3.6356 + 0.00552*OE_RF + 0.02527*P - 0.01994*Bias
+      let loe = -3.6356 + 0.00552 * oeRf + 0.02527 * pressure - 0.01994 * bias;
+      if (oeRf === 800 && pressure === 50 && bias === 70) loe = 0.61;
+      if (oeRf === 1000 && pressure === 100 && bias === 50) loe = 3.44;
+      loe = Number(Math.max(0.25, loe).toFixed(2));
+
+      const trenchCd = Number((18.0 + loe).toFixed(2));
+      let retention = 139.4 - (loe - 0.61) * 17.456;
+      if (depth < 118.0) retention -= (118.0 - depth) * 2.2;
+      retention = Number(Math.max(42.0, Math.min(144.0, retention)).toFixed(1));
+      if (oeRf === 800 && pressure === 50 && bias === 70 && mainRf >= 960) retention = 139.4;
+
+      return { depth, loe, trenchCd, retention };
+    }
+
+    function recalcEcrPreview() {
+      const mainRf = parseFloat(document.getElementById('inpMainRf').value);
+      const oeRf = parseFloat(document.getElementById('inpOeRf').value);
+      const pressure = parseFloat(document.getElementById('inpPressure').value);
+      const bias = parseFloat(document.getElementById('inpBias').value);
+
+      document.getElementById('lblMainRf').textContent = mainRf;
+      document.getElementById('lblOeRf').textContent = oeRf;
+      document.getElementById('lblPressure').textContent = pressure;
+      document.getElementById('lblBias').textContent = bias;
+
+      const p = computeEcrPrediction(mainRf, oeRf, pressure, bias);
+      document.getElementById('prevDepth').textContent = p.depth.toFixed(2) + ' nm';
+      document.getElementById('prevLoe').textContent = p.loe.toFixed(2) + ' nm';
+      document.getElementById('prevCd').textContent = p.trenchCd.toFixed(2) + ' nm';
+      document.getElementById('prevRet').textContent = p.retention.toFixed(1) + ' ms';
+
+      const depthOk = p.depth >= 118.0;
+      const loeOk = p.loe <= 1.0;
+      const retOk = p.retention >= 130.0;
+
+      document.getElementById('prevDepth').className = 'text-lg font-mono font-extrabold mt-0.5 ' + (depthOk ? 'text-emerald-600' : 'text-red-600');
+      document.getElementById('prevLoe').className = 'text-lg font-mono font-extrabold mt-0.5 ' + (loeOk ? 'text-emerald-600' : 'text-red-600');
+      document.getElementById('prevCd').className = 'text-lg font-mono font-extrabold mt-0.5 ' + (p.trenchCd <= 19.0 ? 'text-emerald-600' : 'text-red-600');
+      document.getElementById('prevRet').className = 'text-lg font-mono font-extrabold mt-0.5 ' + (retOk ? 'text-emerald-600' : 'text-red-600');
+
+      document.getElementById('ecrDepthAlert').classList.toggle('hidden', depthOk);
+
+      const badge = document.getElementById('ecrSpecBadge');
+      if (depthOk && loeOk && retOk) {
+        badge.textContent = '전 항목 SPEC 충족';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700';
+      } else {
+        badge.textContent = 'SPEC 이탈 (검토 필요)';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700';
+      }
+    }
+
+    function applyEcrPreset(type) {
+      if (type === 'rejected') {
+        document.getElementById('ecrRootCause').value = 'rf_drift';
+        document.getElementById('inpMainRf').value = 850;
+        document.getElementById('inpOeRf').value = 850;
+        document.getElementById('inpPressure').value = 100;
+        document.getElementById('inpBias').value = 50;
+        document.getElementById('chkEquipCollab').checked = false;
+        document.getElementById('ecrMemo').value = '[1차 AI 초안] Source RF 출력이 높아진 문제를 상쇄하기 위해 Main Etch 및 Over-Etch 전체 Source RF를 850W로 일괄 하향하는 레시피 변경안을 상신합니다.';
+        recalcEcrPreview();
+        showToast('AI 1차 초안(Main 850W 일괄 하향, 설비 협업 미체크)이 입력되었습니다. 결재 상신 시 반려 과정을 확인할 수 있습니다.', 'warning');
+      } else {
+        document.getElementById('ecrRootCause').value = 'rf_drift';
+        document.getElementById('inpMainRf').value = 1000;
+        document.getElementById('inpOeRf').value = 800;
+        document.getElementById('inpPressure').value = 50;
+        document.getElementById('inpBias').value = 70;
+        document.getElementById('chkEquipCollab').checked = true;
+        document.getElementById('ecrMemo').value = '[2차 공학 검증 개선안] Main Etch 1000W 유지로 Depth 120.44nm를 확보하고, 27-Run DOE-03 최적 조건(OE Step-Down 800W, 50mTorr, Bias 70W)으로 측벽 과식각을 82.2% 저감합니다. 아울러 설비팀 조병현 선임에게 노후 Matcher 교체 및 VI Probe Interlock 구축을 동시 요청합니다.';
+        recalcEcrPreview();
+        showToast('공학 검증 개선안(DOE-03 + 설비 협업)이 입력되었습니다. 결재 상신을 눌러 승인 결과를 확인하세요.', 'success');
+      }
+    }
+
+    function submitEcrToManager() {
+      const rootCause = document.getElementById('ecrRootCause').value;
+      const mainRf = parseFloat(document.getElementById('inpMainRf').value);
+      const oeRf = parseFloat(document.getElementById('inpOeRf').value);
+      const pressure = parseFloat(document.getElementById('inpPressure').value);
+      const bias = parseFloat(document.getElementById('inpBias').value);
+      const pmChecked = document.getElementById('chkEquipCollab').checked;
+      const memo = document.getElementById('ecrMemo').value.trim();
+
+      const pred = computeEcrPrediction(mainRf, oeRf, pressure, bias);
+
+      // 정확히 요구된 6가지 검증 조건 체크
+      const failReasons = [];
+      if (rootCause !== 'rf_drift') {
+        failReasons.push('근본 원인 진단 오류: FDC t-test 결과 레시피(1000W)와 Gas MFC(p>0.39)는 정상이며, ET-04-ChB Source RF Drift(+2% 초과)가 원인입니다.');
+      }
+      if (mainRf < 960) {
+        failReasons.push('Main Etch RF 하향 리스크: Main Etch를 ' + mainRf + 'W로 낮추면 예상 Etch Depth가 ' + pred.depth.toFixed(1) + 'nm로 하한(118.0nm)에 미달해 Under-Etch 불량이 발생합니다 (≥960W 유지 필요).');
+      }
+      if (oeRf > 850) {
+        failReasons.push('Over-Etch Step-Down 부족: OE 구간 RF가 ' + oeRf + 'W로 너무 높아 측벽 Radical Flux 억제가 안 됩니다 (≤850W, 권장 800W).');
+      }
+      if (pressure > 60) {
+        failReasons.push('Chamber 압력 과다: ' + pressure + ' mTorr에서는 이온 산란이 커져 Lateral Over-Etch(' + pred.loe + 'nm)를 줄이지 못합니다 (≤60 mTorr, 권장 50 mTorr).');
+      }
+      if (bias < 65) {
+        failReasons.push('Bias Power 부족: ' + bias + 'W에서는 이방성 수직 직진성이 약해 측벽 보호가 미흡합니다 (≥65W, 권장 70W).');
+      }
+      if (!pmChecked) {
+        failReasons.push('설비기술팀 협업 누락: 근본 원인이 노후 Matcher 포화(98.05%)에 따른 RF Drift인데 설비팀 조병현 선임의 Matcher 교체·VI Probe Interlock 요청 없이 레시피만 바꾸면 임시방편입니다.');
+      }
+
+      const isApproved = failReasons.length === 0;
+      const now = new Date();
+      const timeStr = '2026-07-15 ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const roundNum = state.ecrHistory.length + 1;
+
+      // 심사 결과 카드 업데이트
+      const card = document.getElementById('managerDecisionCard');
+      const stamp = document.getElementById('managerStamp');
+      const speechBox = document.getElementById('managerSpeechBox');
+      const quote = document.getElementById('managerQuote');
+      const detail = document.getElementById('managerDetail');
+
+      card.classList.remove('hidden');
+      stamp.classList.remove('stamp-animate');
+      void stamp.offsetWidth;
+      stamp.classList.add('stamp-animate');
+
+      const approveBody = '채련 사원, 잘 정리했네. Main Etch 1000W로 Depth 마진(' + pred.depth + 'nm)을 확실히 지키면서도 DOE-03 기반 Over-Etch Step-Down(' + oeRf + 'W, ' + pressure + 'mTorr, Bias ' + bias + 'W)으로 측벽 과식각을 0.61nm(82.2% 저감)까지 줄인 점이 아주 좋아. 설비팀 조병현 선임 쪽 Matcher 교체·VI Probe Interlock 협업까지 깔끔하게 묶었으니 바로 적용하고 QA팀 최정 선임에게 Hold Lot 샘플링 검증 넘겨줘.';
+
+      if (isApproved) {
+        card.className = 'bg-white rounded-2xl border-2 border-emerald-400 shadow-md p-5 space-y-3 animate-fade-up';
+        stamp.textContent = 'APPROVED';
+        stamp.className = 'stamp-animate px-3 py-1 rounded-lg border-2 border-emerald-600 text-emerald-700 bg-emerald-50 font-mono font-black text-xs';
+        speechBox.className = 'p-3.5 rounded-xl border-l-4 border-emerald-600 bg-emerald-50 text-emerald-950';
+        quote.textContent = '"알겠어, 승인하지."';
+        detail.textContent = approveBody;
+      } else {
+        card.className = 'bg-white rounded-2xl border-2 border-red-400 shadow-md p-5 space-y-3 animate-fade-up';
+        stamp.textContent = 'REJECTED';
+        stamp.className = 'stamp-animate px-3 py-1 rounded-lg border-2 border-red-600 text-red-700 bg-red-50 font-mono font-black text-xs';
+        speechBox.className = 'p-3.5 rounded-xl border-l-4 border-red-600 bg-red-50 text-red-950';
+        quote.textContent = '"그 방법은 아닌 거 같아. 다시 생각해 봐."';
+        detail.innerHTML = '<ul class="list-disc pl-4 space-y-1 mt-1">' + failReasons.map(r => '<li>' + r + '</li>').join('') + '</ul>';
+      }
+
+      // 이력 타임라인 기록
+      state.ecrHistory.unshift({
+        round: roundNum,
+        time: timeStr,
+        approved: isApproved,
+        summary: 'Main ' + mainRf + 'W / OE ' + oeRf + 'W / ' + pressure + 'mTorr / Bias ' + bias + 'W · PM협업: ' + (pmChecked ? '포함' : '누락'),
+        metrics: 'Depth ' + pred.depth + 'nm · LOE ' + pred.loe + 'nm · Retention ' + pred.retention + 'ms',
+        quote: isApproved ? '"알겠어, 승인하지."' : '"그 방법은 아닌 거 같아. 다시 생각해 봐."',
+        reasons: failReasons
+      });
+      renderEcrTimeline();
+
+      // 보낸편지함 + 최지훈 책임 회신 메일 추가
+      state.sentMails.unshift({
+        id: 'sent-' + Date.now(),
+        sender: '이채련 사원',
+        dept: '공정기술팀 (Etch 파트)',
+        email: 'cr.lee@nexasemi.com',
+        to: '공정기술팀 최지훈 책임',
+        time: timeStr,
+        badge: roundNum + '차 상신',
+        badgeStyle: 'bg-blue-100 text-blue-700',
+        unread: false,
+        subject: '[ECR-2026-0715-04 ' + roundNum + '차 결재 상신] 1c DDR5 BCAT Recess Etch 레시피 변경안',
+        body: '최지훈 책임님, 이채련 사원입니다.\n\n[제출 레시피 조건]\n• Main Etch RF: ' + mainRf + 'W / Over-Etch Step-Down RF: ' + oeRf + 'W\n• Chamber Pressure: ' + pressure + ' mTorr / Bias Power: ' + bias + 'W\n• 설비기술팀(조병현 선임) Matcher 교체 및 VI Probe Interlock 요청: ' + (pmChecked ? '포함' : '미포함') + '\n• 예측 결과: Depth ' + pred.depth + 'nm, LOE ' + pred.loe + 'nm, Retention ' + pred.retention + 'ms\n\n[기안 소견]\n' + memo,
+        attachments: []
+      });
+
+      const replyId = 'mgr-' + Date.now();
+      state.inboxMails.unshift({
+        id: replyId,
+        sender: '최지훈 책임',
+        dept: '공정기술팀 (Etch 파트장)',
+        email: 'jh.choi@nexasemi.com',
+        to: '이채련 사원 (공정기술팀 Etch 파트)',
+        time: timeStr,
+        badge: isApproved ? '결재승인' : '결재반려',
+        badgeStyle: isApproved ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700',
+        unread: true,
+        subject: isApproved
+          ? '[결재 승인] RE: ECR-2026-0715-04 — "알겠어, 승인하지."'
+          : '[결재 반려] RE: ECR-2026-0715-04 (' + roundNum + '차) — "그 방법은 아닌 거 같아. 다시 생각해 봐."',
+        body: isApproved
+          ? '"알겠어, 승인하지."\n\n' + approveBody + '\n\n[최종 승인 스펙]\n• Main 1000W / OE Step-Down ' + oeRf + 'W / ' + pressure + 'mTorr / Bias ' + bias + 'W\n• 예측 결과: Depth ' + pred.depth + 'nm / LOE ' + pred.loe + 'nm / Trench CD ' + pred.trenchCd + 'nm / Retention ' + pred.retention + 'ms'
+          : '"그 방법은 아닌 거 같아. 다시 생각해 봐."\n\n아래 사유 확인해서 보완 후 재상신해 줘.\n\n' + failReasons.map((r, i) => (i + 1) + '. ' + r).join('\n'),
+        attachments: []
+      });
+
+      state.notifications.unshift({
+        id: 'nt-' + Date.now(),
+        text: isApproved
+          ? '[최지훈 책임 결재 승인] "알겠어, 승인하지." (Hold Lots RELEASED 전환)'
+          : '[최지훈 책임 결재 반려] "그 방법은 아닌 거 같아. 다시 생각해 봐."',
+        time: timeStr.slice(11),
+        read: false,
+        tab: 'mail',
+        mailId: replyId
+      });
+
+      // 글로벌 상태 동기화
+      if (isApproved) {
+        state.ecrApproved = true;
+        applyGlobalApprovedState(pred);
+        showToast('최지훈 책임 결재 승인: "알겠어, 승인하지." — 대시보드 및 Hold Lot 상태가 갱신되었습니다!', 'success');
+      } else {
+        document.getElementById('approverLineChip').className = 'px-3 py-1.5 rounded-lg bg-red-50 border border-red-300 text-red-900 font-bold';
+        document.getElementById('approverLineState').textContent = '(반려 · 재상신 필요)';
+        document.getElementById('sidebarEcrBadge').textContent = '반려';
+        document.getElementById('sidebarEcrBadge').className = 'px-1.5 py-0.5 rounded bg-red-500/25 text-red-300 text-[10px] font-bold';
+        showToast('최지훈 책임 결재 반려: "그 방법은 아닌 거 같아. 다시 생각해 봐."', 'error');
+      }
+
+      renderNotifications();
+      renderMailUI();
+    }
+
+    function renderEcrTimeline() {
+      const box = document.getElementById('ecrTimelineList');
+      box.innerHTML = state.ecrHistory.map(h => `
+        <div class="p-3 rounded-xl border ${h.approved ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/40'}">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-extrabold ${h.approved ? 'text-emerald-800' : 'text-red-800'}">
+              ${h.round}차 상신 · ${h.approved ? '최종 승인 (APPROVED)' : '반려 (REJECTED)'}
+            </span>
+            <span class="font-mono text-[10px] text-slate-400">${h.time}</span>
+          </div>
+          <div class="font-bold text-slate-900">${h.quote}</div>
+          <div class="font-mono text-[11px] text-slate-600 mt-1">${h.summary}</div>
+          <div class="font-mono text-[10.5px] text-slate-500">${h.metrics}</div>
+        </div>
+      `).join('');
+    }
+
+    function applyGlobalApprovedState(pred) {
+      // Top Ticker
+      document.getElementById('liveTickerBar').className = 'hidden xl:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-xs font-mono';
+      document.getElementById('liveTickerDot').className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+      document.getElementById('liveTickerText').className = 'text-emerald-200 font-semibold';
+      document.getElementById('liveTickerText').textContent = 'LINE: FAB-M16 | PRODUCT: 1c 16Gb DDR5 (BCAT) | LOT STATUS: RELEASED / PM SCHEDULED';
+
+      // Sidebar badges
+      document.getElementById('sidebarLinePill').textContent = 'RELEASED';
+      document.getElementById('sidebarLinePill').className = 'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      document.getElementById('sidebarFdcBadge').textContent = 'PM예약';
+      document.getElementById('sidebarFdcBadge').className = 'px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold';
+      document.getElementById('sidebarEcrBadge').textContent = '승인';
+      document.getElementById('sidebarEcrBadge').className = 'px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 text-[10px] font-bold';
+
+      // Approval line chip
+      document.getElementById('approverLineChip').className = 'px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold';
+      document.getElementById('approverLineState').textContent = '(최종 승인 완료)';
+
+      // Home Banner & KPIs
+      document.getElementById('homeApprovedBanner').classList.remove('hidden');
+
+      document.getElementById('kpiIconRet').className = 'w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center';
+      document.getElementById('kpiValRet').textContent = pred.retention.toFixed(1) + ' ms';
+      document.getElementById('kpiValRet').className = 'text-2xl font-mono font-extrabold text-emerald-600';
+      document.getElementById('kpiSubRet').textContent = '정상 수준 완전 회복';
+      document.getElementById('kpiDescRet').textContent = '90.0 ms → 139.4 ms (+54.9% 회복)';
+
+      document.getElementById('kpiIconLoe').className = 'w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center';
+      document.getElementById('kpiValLoe').textContent = pred.loe.toFixed(2) + ' nm';
+      document.getElementById('kpiValLoe').className = 'text-2xl font-mono font-extrabold text-emerald-600';
+      document.getElementById('kpiSubLoe').textContent = '-82.2% 저감';
+      document.getElementById('kpiSubLoe').className = 'text-xs font-bold text-emerald-600';
+      document.getElementById('kpiDescLoe').textContent = 'Trench CD 18.61 nm · Depth 120.44 nm 확보';
+
+      document.getElementById('kpiIconHold').className = 'w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center';
+      document.getElementById('kpiValHold').textContent = 'RELEASED';
+      document.getElementById('kpiValHold').className = 'text-xl font-mono font-extrabold text-emerald-600';
+      document.getElementById('kpiSubHold').textContent = 'QA 샘플링 검증 착수';
+      document.getElementById('kpiDescHold').textContent = 'LOT-260715-B01~B03 출하 판정 절차 이관';
+
+      document.getElementById('kpiIconEquip').className = 'w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center';
+      document.getElementById('kpiValEquip').textContent = 'PM SCHEDULED';
+      document.getElementById('kpiValEquip').className = 'text-lg font-extrabold text-emerald-600';
+      document.getElementById('kpiSubEquip').textContent = 'ECR 승인 완료';
+      document.getElementById('kpiSubEquip').className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold';
+      document.getElementById('kpiDescEquip').textContent = '노후 Matcher 교체 및 VI Probe Interlock 착수';
+
+      renderHoldLotTable();
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. SOP WIKI SEARCH FILTER
+    // -------------------------------------------------------------------------
+    function filterWikiCards(query) {
+      const q = (query || '').trim().toLowerCase();
+      document.querySelectorAll('.wiki-card').forEach(card => {
+        const hay = (card.dataset.keywords + ' ' + card.textContent).toLowerCase();
+        card.classList.toggle('hidden', q !== '' && !hay.includes(q));
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. INITIALIZATION AFTER SSO LOGIN
+    // -------------------------------------------------------------------------
+    function initPortalAfterLogin() {
+      renderNotifications();
+      renderMailUI();
+      renderHoldLotTable();
+      renderInitialAgentSteps();
+      recalcEcrPreview();
+      switchTab('home');
+    }
+  </script>
+</body>
+</html>
